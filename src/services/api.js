@@ -1,14 +1,7 @@
 import axios from "axios"
 import { TOKEN_KEY, USER_KEY } from "../constants/storage"
 
-export const register = async (data) => {
-  console.log("Fake register:", data);
 
-  return {
-    success: true,
-    user: data
-  };
-};
 
 const api = axios.create({
   baseURL,
