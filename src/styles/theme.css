@@ -1,0 +1,92 @@
+/* TaskFlow — design tokens & base */
+
+:root {
+  --tf-font: "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --tf-page-bg: #f1f5f9;
+  --tf-surface: #ffffff;
+  --tf-surface-elevated: #ffffff;
+  --tf-border: rgba(15, 23, 42, 0.08);
+  --tf-border-strong: rgba(15, 23, 42, 0.12);
+
+  --tf-text: #0f172a;
+  --tf-text-secondary: #475569;
+  --tf-text-muted: #64748b;
+
+  --tf-primary: #4f46e5;
+  --tf-primary-hover: #4338ca;
+  --tf-primary-soft: rgba(79, 70, 229, 0.12);
+
+  --tf-accent: #0d9488;
+  --tf-accent-soft: rgba(13, 148, 136, 0.12);
+
+  --tf-sidebar-bg: linear-gradient(180deg, #0f172a 0%, #1e293b 55%, #0f172a 100%);
+  --tf-sidebar-border: rgba(255, 255, 255, 0.06);
+  --tf-sidebar-active: rgba(99, 102, 241, 0.22);
+  --tf-sidebar-hover: rgba(255, 255, 255, 0.06);
+
+  --tf-radius-sm: 8px;
+  --tf-radius: 12px;
+  --tf-radius-lg: 16px;
+
+  --tf-shadow: 0 1px 2px rgba(15, 23, 42, 0.04),
+    0 4px 12px rgba(15, 23, 42, 0.06);
+  --tf-shadow-hover: 0 8px 24px rgba(15, 23, 42, 0.1);
+
+  --tf-stat-violet: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  --tf-stat-blue: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  --tf-stat-teal: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+  --tf-stat-amber: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--tf-font);
+  color: var(--tf-text);
+  background: var(--tf-page-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.page-heading,
+.dashboard-title,
+.project-header h1,
+.container > h1.task-title {
+  font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--tf-text);
+  margin: 0 0 0.35rem;
+}
+
+.section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--tf-text);
+  letter-spacing: -0.02em;
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.project-header .section-title {
+  margin-bottom: 0.5rem;
+}
+
+.text-muted {
+  color: var(--tf-text-muted);
+  font-size: 0.9375rem;
+}
+
+.page-lede {
+  margin: -0.35rem 0 1.25rem;
+  color: var(--tf-text-muted);
+  font-size: 0.9375rem;
+}

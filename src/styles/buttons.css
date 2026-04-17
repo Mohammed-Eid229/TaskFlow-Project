@@ -1,0 +1,66 @@
+.btn-sm {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8125rem;
+}
+
+.btn {
+  padding: 0.6rem 1.15rem;
+  border: none;
+  border-radius: var(--tf-radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition:
+    background 0.15s ease,
+    transform 0.1s ease,
+    box-shadow 0.15s ease;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn-primary {
+  background: var(--tf-primary);
+  color: white;
+  box-shadow: 0 1px 2px rgba(79, 70, 229, 0.25);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--tf-primary-hover);
+}
+
+.btn-primary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--tf-primary-soft);
+}
+
+.btn-danger {
+  background: #dc2626;
+  color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
+.btn-gray {
+  background: #64748b;
+  color: white;
+}
+
+.btn-gray:hover:not(:disabled) {
+  background: #475569;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--tf-text-muted, #64748b);
+  border: 1px solid var(--tf-border);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--tf-surface-muted, #f1f5f9);
+  color: var(--tf-text, #0f172a);
+}
