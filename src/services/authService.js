@@ -9,7 +9,7 @@ export const login = async (data) => {
   console.log("FAKE LOGIN:", data)
 
   const fakeUser = {
-    name: "Test User",
+    name: data.name,
     email: data.email,
   }
 
