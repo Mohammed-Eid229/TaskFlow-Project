@@ -3,9 +3,11 @@ import { TOKEN_KEY, USER_KEY } from "../constants/storage"
 
 
 // 🌐 Real API (لما يبقى عندك backend)
-const baseURL =
-  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ||
-  "http://localhost:5000/api"
+// const baseURL =
+//   import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ||
+//   "http://localhost:5000/api"
+
+const baseURL =""
 
 const USE_FAKE = import.meta.env.VITE_USE_FAKE === "true"
 
