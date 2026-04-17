@@ -1,9 +1,14 @@
 import axios from "axios"
 import { TOKEN_KEY, USER_KEY } from "../constants/storage"
 
-const baseURL =
-  import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ||
-  "http://localhost:5000/api"
+export const register = async (data) => {
+  console.log("Fake register:", data);
+
+  return {
+    success: true,
+    user: data
+  };
+};
 
 const api = axios.create({
   baseURL,
