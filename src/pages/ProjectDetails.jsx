@@ -57,7 +57,7 @@ export default function ProjectDetails() {
 
   const assignableUsers = getAdminUsers().filter((member) => member.role === "user")
 
-  const addTask = ({ title, description, priority, assignedTo }) => {
+  const addTask = ({ title, description, priority, assignedTo, dueDate }) => {
     const newTask = {
       id: `t-${Date.now()}`,
       title,
@@ -65,9 +65,9 @@ export default function ProjectDetails() {
       status: "todo",
       priority: priority || "medium",
       assignedTo: assignedTo || "Unassigned",
-      dueDate: "",
-      projectId: "1",
-      projectName: "Website Redesign",
+      dueDate: dueDate || "",
+      projectId: String(project.id ?? id),
+      projectName: project.title ?? "Website Redesign",
     }
     setTasks([...tasks, newTask])
   }

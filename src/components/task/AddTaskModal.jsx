@@ -6,6 +6,7 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, assignees = [] })
   const [description, setDescription] = useState("")
   const [priority, setPriority] = useState("medium")
   const [assignee, setAssignee] = useState("")
+  const [dueDate, setDueDate] = useState("")
 
   if (!isOpen) return null
 
@@ -17,12 +18,14 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, assignees = [] })
       description: description.trim(),
       priority,
       assignedTo: assignee || "Unassigned",
+      dueDate: dueDate.trim(),
     })
 
     setTitle("")
     setDescription("")
     setPriority("medium")
     setAssignee("")
+    setDueDate("")
     onClose()
   }
 
@@ -86,6 +89,16 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, assignees = [] })
                 </option>
               ))}
             </select>
+          </label>
+
+          <label className="auth-label">
+            Due date
+            <input
+              type="date"
+              className="form-control"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+            />
           </label>
 
           <div className="tf-dialog-actions tf-dialog-actions--form">
