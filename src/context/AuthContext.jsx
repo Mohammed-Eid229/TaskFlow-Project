@@ -14,6 +14,7 @@ import {
   inferMockRoleFromEmail,
   isMockAuthEnabled,
 } from "../utils/mockAuth"
+import { createUserWithOptionalPmRequest, getMockRoleByEmail } from "../data/adminStore"
 
 const AuthContext = createContext(null)
 
@@ -57,10 +58,11 @@ export function AuthProvider({ children }) {
       try {
         if (isMockAuthEnabled()) {
           const trimmed = email.trim()
+          const roleFromAdminStore = getMockRoleByEmail(trimmed)
           const { token: t, user: u } = buildMockSession({
             email: trimmed,
             fullName: trimmed.split("@")[0] || "User",
-            role: inferMockRoleFromEmail(trimmed),
+            role: roleFromAdminStore || inferMockRoleFromEmail(trimmed),
           })
           persistSession(t, u)
           return { ok: true }
@@ -94,13 +96,25 @@ export function AuthProvider({ children }) {
       setLoading(true)
       try {
         if (isMockAuthEnabled()) {
+          const wantsPm = role === "ProjectManager"
+          const { user: adminStoreUser, pendingCreated } =
+            createUserWithOptionalPmRequest({
+              fullName,
+              email,
+              wantsPm,
+            })
+          const sessionRole = wantsPm ? "TeamMember" : role
           const { token: t, user: u } = buildMockSession({
-            email: email.trim(),
-            fullName: fullName.trim(),
-            role,
+            email: adminStoreUser.email,
+            fullName: adminStoreUser.name,
+            role: sessionRole,
           })
           persistSession(t, u)
-          return { ok: true, needsLogin: false }
+          return {
+            ok: true,
+            needsLogin: false,
+            pendingPmApproval: pendingCreated,
+          }
         }
 
         const res = await registerRequest({

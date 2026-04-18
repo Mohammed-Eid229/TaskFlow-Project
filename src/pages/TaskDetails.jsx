@@ -1,9 +1,10 @@
 import Layout from "../layout/Layout"
-import { Link, Navigate, useParams, useLocation } from "react-router-dom"
+import { Link, Navigate, useParams, useLocation, useNavigate } from "react-router-dom"
 import { useState, useEffect, useMemo } from "react"
 import { useAuth } from "../context/AuthContext"
 import { isAdmin, canCreateProjectsAndTasks } from "../utils/roles"
 import { getDemoTask } from "../data/demoTasks"
+import { getAdminUsers } from "../data/adminStore"
 import {
   normalizeTaskDetail,
   formatPriorityLabel,
@@ -29,6 +30,7 @@ import {
 export default function TaskDetails() {
   const { id } = useParams()
   const location = useLocation()
+  const navigate = useNavigate()
   const { user } = useAuth()
 
   const task = useMemo(() => {
@@ -51,15 +53,38 @@ export default function TaskDetails() {
   }, [id, location.state])
 
   const [priorityPm, setPriorityPm] = useState(null)
+  const [statusPm, setStatusPm] = useState(null)
+  const [assigneePm, setAssigneePm] = useState(null)
+  const assignableUsers = useMemo(
+    () => getAdminUsers().filter((member) => member.role === "user"),
+    []
+  )
 
   useEffect(() => {
     setPriorityPm(null)
+    setStatusPm(null)
+    setAssigneePm(null)
   }, [task.id])
 
   const isPM = canCreateProjectsAndTasks(user)
   const effectivePriority = priorityPm ?? task.priority
+  const effectiveStatus = statusPm ?? task.status
+  const effectiveAssignee = assigneePm ?? task.assignedTo
   const priorityLabel = formatPriorityLabel(effectivePriority)
   const priorityBadgeClass = priorityToBadgeClass(effectivePriority)
+  const statusLabelMap = {
+    todo: "To Do",
+    progress: "In Progress",
+    done: "Done",
+  }
+  const statusBadgeClassMap = {
+    todo: "status-todo",
+    progress: "status-inprogress",
+    done: "status-done",
+  }
+  const deleteTaskAsPm = () => {
+    navigate("/projects", { replace: true })
+  }
 
   const [comments, setComments] = useState([
     {
@@ -187,7 +212,23 @@ export default function TaskDetails() {
             <RiUserLine aria-hidden />
             <div>
               <span className="task-meta-label">Assignee</span>
-              <span className="task-meta-value">{task.assignedTo}</span>
+              {isPM ? (
+                <select
+                  className="input task-priority-select"
+                  value={effectiveAssignee}
+                  onChange={(e) => setAssigneePm(e.target.value)}
+                  aria-label="Task assignee"
+                >
+                  <option value="Unassigned">Unassigned</option>
+                  {assignableUsers.map((member) => (
+                    <option key={member.id} value={member.name}>
+                      {member.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="task-meta-value">{effectiveAssignee}</span>
+              )}
             </div>
           </div>
           <div className="task-meta-item">
@@ -216,9 +257,22 @@ export default function TaskDetails() {
             <RiCheckboxCircleLine aria-hidden />
             <div>
               <span className="task-meta-label">Status</span>
-              <span className={`badge ${task.statusBadgeClass}`}>
-                {task.statusLabel}
-              </span>
+              {!isPM ? (
+                <select
+                  className="input task-priority-select"
+                  value={String(effectiveStatus).toLowerCase()}
+                  onChange={(e) => setStatusPm(e.target.value)}
+                  aria-label="Task status"
+                >
+                  <option value="todo">To Do</option>
+                  <option value="progress">In Progress</option>
+                  <option value="done">Done</option>
+                </select>
+              ) : (
+                <span className={`badge ${statusBadgeClassMap[effectiveStatus]}`}>
+                  {statusLabelMap[effectiveStatus] ?? task.statusLabel}
+                </span>
+              )}
             </div>
           </div>
           <div className="task-meta-item">

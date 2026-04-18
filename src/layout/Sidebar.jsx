@@ -1,6 +1,15 @@
 import { NavLink, useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import { isAdmin } from "../utils/roles"
+import {
+  RiDashboardLine,
+  RiFolderLine,
+  RiUser3Line,
+  RiUserFollowLine,
+  RiPulseLine,
+  RiUserSettingsLine,
+  RiLogoutCircleRLine,
+} from "react-icons/ri"
 
 const navClass = ({ isActive }) =>
   `sidebar-link${isActive ? " sidebar-link--active" : ""}`
@@ -27,37 +36,49 @@ export default function Sidebar({ sidebarOpen }) {
         <ul className="sidebar-menu">
           <li>
             <NavLink to="/dashboard" className={navClass} end>
-              Dashboard
+              <RiDashboardLine aria-hidden />
+              <span className="sidebar-link__label">Dashboard</span>
             </NavLink>
           </li>
           {admin ? (
             <>
               <li>
                 <NavLink to="/users" className={navClass}>
-                  Users
+                  <RiUser3Line aria-hidden />
+                  <span className="sidebar-link__label">Users</span>
+                </NavLink>
+              </li>
+              <li>
+                <NavLink to="/pending-users" className={navClass}>
+                  <RiUserFollowLine aria-hidden />
+                  <span className="sidebar-link__label">Pending Users</span>
                 </NavLink>
               </li>
               <li>
                 <NavLink to="/projects" className={navClass}>
-                  Projects
+                  <RiFolderLine aria-hidden />
+                  <span className="sidebar-link__label">Projects</span>
                 </NavLink>
               </li>
               <li>
                 <NavLink to="/activity" className={navClass}>
-                  Activity
+                  <RiPulseLine aria-hidden />
+                  <span className="sidebar-link__label">Activity</span>
                 </NavLink>
               </li>
             </>
           ) : (
             <li>
               <NavLink to="/projects" className={navClass}>
-                Projects
+                <RiFolderLine aria-hidden />
+                <span className="sidebar-link__label">Projects</span>
               </NavLink>
             </li>
           )}
           <li>
             <NavLink to="/profile" className={navClass}>
-              Profile
+              <RiUserSettingsLine aria-hidden />
+              <span className="sidebar-link__label">Profile</span>
             </NavLink>
           </li>
         </ul>
@@ -67,7 +88,8 @@ export default function Sidebar({ sidebarOpen }) {
             className="sidebar-link sidebar-logout"
             onClick={handleLogout}
           >
-            Logout
+            <RiLogoutCircleRLine aria-hidden />
+            <span className="sidebar-link__label">Logout</span>
           </button>
         </div>
       </nav>

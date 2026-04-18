@@ -35,7 +35,8 @@ export default function Navbar({ toggleSidebar }) {
           className="navbar-item"
           onClick={() => navigate("/notifications")}
         >
-          <IoNotificationsOutline /> Notifications
+          <IoNotificationsOutline />
+          <span className="navbar-item__label">Notifications</span>
           {unreadCount > 0 && (
             <span className="notification-badge">
               {unreadCount}
@@ -47,11 +48,13 @@ export default function Navbar({ toggleSidebar }) {
           className="navbar-item"
           onClick={() => navigate("/profile")}
         >
-          <LuUser /> Profile
+          <LuUser />
+          <span className="navbar-item__label">Profile</span>
         </span>
 
         <span className="navbar-item" onClick={handleLogout}>
-          <RiLogoutBoxLine /> Logout
+          <RiLogoutBoxLine />
+          <span className="navbar-item__label">Logout</span>
         </span>
 
       </div>

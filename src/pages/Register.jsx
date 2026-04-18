@@ -45,6 +45,11 @@ export default function Register() {
         setInfo("Account created. You can sign in once the server approves your role (if required).")
         setTimeout(() => navigate("/login"), 2000)
       } else {
+        if (result.pendingPmApproval) {
+          setInfo("PM request submitted. You can continue now as User until Admin approves it.")
+          setTimeout(() => navigate("/dashboard", { replace: true }), 1200)
+          return
+        }
         navigate("/dashboard", { replace: true })
       }
     } else {

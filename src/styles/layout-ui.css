@@ -102,11 +102,18 @@
     color: #cbd5e1;
     text-decoration: none;
     padding: 0.65rem 0.85rem;
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
     border-radius: var(--tf-radius-sm);
     font-size: 0.9375rem;
     font-weight: 500;
     transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidebar-link svg {
+    font-size: 1.05rem;
+    flex-shrink: 0;
 }
 
 .sidebar-link:hover {
@@ -366,6 +373,15 @@
 
     .menu-btn {
         display: block;
+    }
+
+    .navbar-item__label {
+        display: none;
+    }
+
+    .navbar-item {
+        margin-left: 10px;
+        gap: 0;
     }
 
     .main-layout {

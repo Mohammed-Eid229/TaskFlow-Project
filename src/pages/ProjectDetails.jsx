@@ -4,20 +4,25 @@ import { DragDropContext } from "react-beautiful-dnd"
 import { useState } from "react"
 import { INITIAL_KANBAN_TASKS } from "../data/demoTasks"
 import AddTaskModal from "../components/task/AddTaskModal"
-import { Link, Navigate, useParams, useLocation } from "react-router-dom"
+import { Link, Navigate, useParams, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import { canCreateProjectsAndTasks, isAdmin } from "../utils/roles"
 import { RiArrowLeftLine, RiDragMoveLine } from "react-icons/ri"
+import { getAdminUsers } from "../data/adminStore"
+import { deleteProjectById, getProjects } from "../data/projectsStore"
 
 export default function ProjectDetails() {
 
   const { id } = useParams()
   const { user } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
 
-  const project = location.state?.project || {
+  const storedProject = getProjects().find((p) => String(p.id) === String(id))
+  const project = location.state?.project || storedProject || {
+    id,
     title: "Project",
-    description: "No description"
+    description: "No description",
   }
   const isPM = canCreateProjectsAndTasks(user)
 
@@ -34,6 +39,7 @@ export default function ProjectDetails() {
   const done = tasks.filter((t) => t.status === "done")
 
   const onDragEnd = (result) => {
+    if (isPM) return
     if (!result.destination) return
 
     const taskId = result.draggableId
@@ -49,18 +55,16 @@ export default function ProjectDetails() {
     setTasks(updatedTasks)
   }
 
-  const addTask = (title, priority) => {
-    const assignee =
-      user?.fullName?.trim() ||
-      user?.email?.split("@")[0] ||
-      "Unassigned"
+  const assignableUsers = getAdminUsers().filter((member) => member.role === "user")
+
+  const addTask = ({ title, description, priority, assignedTo }) => {
     const newTask = {
       id: `t-${Date.now()}`,
       title,
-      description: "",
+      description,
       status: "todo",
       priority: priority || "medium",
-      assignedTo: assignee,
+      assignedTo: assignedTo || "Unassigned",
       dueDate: "",
       projectId: "1",
       projectName: "Website Redesign",
@@ -70,6 +74,11 @@ export default function ProjectDetails() {
 
   const deleteTask = (id) => {
     setTasks(tasks.filter((task) => task.id !== id))
+  }
+
+  const deleteProject = () => {
+    deleteProjectById(project.id)
+    navigate("/projects", { replace: true })
   }
 
 
@@ -89,13 +98,18 @@ export default function ProjectDetails() {
           </div>
 
           {isPM ? (
-            <button
-              type="button"
-              onClick={() => setIsModalOpen(true)}
-              className="btn btn-primary"
-            >
-              + Add task
-            </button>
+            <div className="d-flex gap-2">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(true)}
+                className="btn btn-primary"
+              >
+                + Add task
+              </button>
+              <button type="button" onClick={deleteProject} className="btn btn-danger">
+                Delete project
+              </button>
+            </div>
           ) : (
             <p className="projects-role-hint">
               {/* Only <strong>project managers</strong> add tasks. Drag cards to
@@ -124,6 +138,7 @@ export default function ProjectDetails() {
                 id="todo"
                 onDelete={deleteTask}
                 canDeleteTask={isPM}
+                canDragTask={!isPM}
               />
               <Column
                 title="In Progress"
@@ -132,6 +147,7 @@ export default function ProjectDetails() {
                 id="progress"
                 onDelete={deleteTask}
                 canDeleteTask={isPM}
+                canDragTask={!isPM}
               />
               <Column
                 title="Done"
@@ -140,6 +156,7 @@ export default function ProjectDetails() {
                 id="done"
                 onDelete={deleteTask}
                 canDeleteTask={isPM}
+                canDragTask={!isPM}
               />
             </div>
           </div>
@@ -150,6 +167,7 @@ export default function ProjectDetails() {
             isOpen={isModalOpen}
             onClose={() => setIsModalOpen(false)}
             onAdd={addTask}
+            assignees={assignableUsers}
           />
         ) : null}
       </div>

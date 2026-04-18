@@ -1,61 +1,23 @@
 import Layout from "../layout/Layout"
 import { Link } from "react-router-dom"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import CreateProjectModal from "../components/project/CreateProjectModal"
 import { useAuth } from "../context/AuthContext"
 import { canCreateProjectsAndTasks, isAdmin } from "../utils/roles"
 import { RiFolderLine, RiTeamLine, RiArrowRightLine } from "react-icons/ri"
 import AdminProjects from "./AdminProjects"
+import { getProjects, saveProjects } from "../data/projectsStore"
 
 export default function Projects() {
   const { user } = useAuth()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
 
-  const [projects, setProjects] = useState([
-    {
-      id: 1,
-      title: "Website Redesign",
-      description: "Redesign company website",
-      members: 5,
-      tasksOpen: 8,
-    },
-    {
-      id: 2,
-      title: "Mobile App",
-      description: "Build mobile application",
-      members: 4,
-      tasksOpen: 12,
-    },
-    {
-      id: 3,
-      title: "Admin Dashboard",
-      description: "Create admin panel",
-      members: 3,
-      tasksOpen: 5,
-    },
-    {
-      id: 4,
-      title: "API Integration",
-      description: "Connect services and webhooks",
-      members: 6,
-      tasksOpen: 4,
-    },
-    {
-      id: 5,
-      title: "Design System",
-      description: "Tokens, components, documentation",
-      members: 2,
-      tasksOpen: 6,
-    },
-    {
-      id: 6,
-      title: "QA Sprint",
-      description: "Regression and release testing",
-      members: 4,
-      tasksOpen: 9,
-    },
-  ])
+  const [projects, setProjects] = useState([])
+
+  useEffect(() => {
+    setProjects(getProjects())
+  }, [])
 
   if (isAdmin(user)) {
     return <AdminProjects />
@@ -71,7 +33,9 @@ export default function Projects() {
       members: 1,
       tasksOpen: 0,
     }
-    setProjects([...projects, newProject])
+    const nextProjects = [...projects, newProject]
+    setProjects(nextProjects)
+    saveProjects(nextProjects)
   }
 
   return (
@@ -100,15 +64,15 @@ export default function Projects() {
           )}
         </div>
 
-        <div className="responsive-grid projects-grid">
+        <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-3 projects-grid">
           {projects.map((project) => (
-            <Link
-              key={project.id}
-              to={`/projects/${project.id}`}
-              state={{ project }}
-              className="project-tile"
-            >
-              <article className="card project-card-elevated">
+            <div key={project.id} className="col">
+              <Link
+                to={`/projects/${project.id}`}
+                state={{ project }}
+                className="project-tile text-decoration-none"
+              >
+                <article className="card project-card-elevated h-100">
                 <div className="project-card-top">
                   <span className="project-card-icon" aria-hidden>
                     <RiFolderLine />
@@ -124,8 +88,9 @@ export default function Projects() {
                   </span>
                   <span>{project.tasksOpen} open tasks</span>
                 </div>
-              </article>
-            </Link>
+                </article>
+              </Link>
+            </div>
           ))}
         </div>
 

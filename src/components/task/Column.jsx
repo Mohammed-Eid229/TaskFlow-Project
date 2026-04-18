@@ -8,6 +8,7 @@ export default function Column({
   id,
   onDelete,
   canDeleteTask = true,
+  canDragTask = true,
 }) {
   return (
     <Droppable droppableId={id}>
@@ -27,6 +28,7 @@ export default function Column({
               index={index}
               onDelete={onDelete}
               canDelete={canDeleteTask}
+              canDrag={canDragTask}
             />
           ))}
 

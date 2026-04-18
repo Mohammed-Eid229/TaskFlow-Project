@@ -8,13 +8,20 @@ const PRIORITY_BORDER = {
   low: "#34d399",
 }
 
-export default function TaskCard({ task, project, index, onDelete, canDelete = true }) {
+export default function TaskCard({
+  task,
+  project,
+  index,
+  onDelete,
+  canDelete = true,
+  canDrag = true,
+}) {
   const navigate = useNavigate()
   const priority = (task.priority || "low").toLowerCase()
   const borderColor = PRIORITY_BORDER[priority] || PRIORITY_BORDER.low
 
   return (
-    <Draggable draggableId={String(task.id)} index={index}>
+    <Draggable draggableId={String(task.id)} index={index} isDragDisabled={!canDrag}>
       {(provided) => (
         <div
           ref={provided.innerRef}

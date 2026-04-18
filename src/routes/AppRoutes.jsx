@@ -13,6 +13,7 @@ import Notifications from "../pages/Notifications"
 import Users from "../pages/Users"
 import ActivityLog from "../pages/ActivityLog"
 import AdminProjectView from "../pages/AdminProjectView"
+import PendingUsers from "../pages/PendingUsers"
 
 export default function AppRoutes() {
   return (
@@ -32,6 +33,7 @@ export default function AppRoutes() {
 
         <Route element={<AdminRoute />}>
           <Route path="/users" element={<Users />} />
+          <Route path="/pending-users" element={<PendingUsers />} />
           <Route path="/activity" element={<ActivityLog />} />
           <Route path="/admin/projects/:id" element={<AdminProjectView />} />
         </Route>

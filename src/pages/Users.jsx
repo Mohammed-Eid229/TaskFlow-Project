@@ -1,28 +1,24 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Layout from "../layout/Layout"
 import ConfirmDialog from "../components/admin/ConfirmDialog"
 import { useToast } from "../context/ToastContext"
-import {
-  initialMockUsers,
-  ROLE_OPTIONS,
-  nextMockUserId,
-  apiRoleFromValue,
-} from "../data/adminMock"
-import { RiUserAddLine, RiSearchLine } from "react-icons/ri"
+import { ROLE_OPTIONS, apiRoleFromValue } from "../data/adminMock"
+import { getAdminUsers, saveAdminUsers } from "../data/adminStore"
+import { RiSearchLine } from "react-icons/ri"
 
 const PAGE_SIZE = 5
 
 export default function Users() {
   const { showToast } = useToast()
-  const [users, setUsers] = useState(initialMockUsers)
+  const [users, setUsers] = useState([])
   const [query, setQuery] = useState("")
   const [roleFilter, setRoleFilter] = useState("all")
   const [page, setPage] = useState(1)
-  const [addOpen, setAddOpen] = useState(false)
-  const [newName, setNewName] = useState("")
-  const [newEmail, setNewEmail] = useState("")
-  const [newRole, setNewRole] = useState("user")
   const [deleteId, setDeleteId] = useState(null)
+
+  useEffect(() => {
+    setUsers(getAdminUsers())
+  }, [])
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -41,37 +37,19 @@ export default function Users() {
   const pageRows = filtered.slice(sliceStart, sliceStart + PAGE_SIZE)
 
   const handleRoleChange = (id, value) => {
-    setUsers((prev) =>
-      prev.map((u) => (u.id === id ? { ...u, role: value } : u))
-    )
+    const nextUsers = users.map((u) => (u.id === id ? { ...u, role: value } : u))
+    setUsers(nextUsers)
+    saveAdminUsers(nextUsers)
     showToast("Role updated (mock — connect PATCH /api/users/:id)", "success")
   }
 
   const confirmDelete = () => {
     if (deleteId == null) return
-    setUsers((prev) => prev.filter((u) => u.id !== deleteId))
+    const nextUsers = users.filter((u) => u.id !== deleteId)
+    setUsers(nextUsers)
+    saveAdminUsers(nextUsers)
     setDeleteId(null)
     showToast("User removed (mock)", "success")
-  }
-
-  const addUser = (e) => {
-    e.preventDefault()
-    if (!newName.trim() || !newEmail.trim()) {
-      showToast("Name and email are required.", "error")
-      return
-    }
-    const row = {
-      id: nextMockUserId(),
-      name: newName.trim(),
-      email: newEmail.trim(),
-      role: newRole,
-    }
-    setUsers((prev) => [...prev, row])
-    setAddOpen(false)
-    setNewName("")
-    setNewEmail("")
-    setNewRole("user")
-    showToast("User added (mock — connect POST /api/users)", "success")
   }
 
   const toDeleteName = users.find((u) => u.id === deleteId)?.name
@@ -86,13 +64,6 @@ export default function Users() {
               Manage accounts and roles — UI only until the API is wired.
             </p>
           </div>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => setAddOpen(true)}
-          >
-            <RiUserAddLine aria-hidden /> Add user
-          </button>
         </div>
 
         <div className="admin-toolbar">
@@ -208,67 +179,6 @@ export default function Users() {
           </div>
         </div>
       </div>
-
-      {addOpen ? (
-        <div className="tf-dialog-root" role="presentation">
-          <button
-            type="button"
-            className="tf-dialog-backdrop"
-            aria-label="Close"
-            onClick={() => setAddOpen(false)}
-          />
-          <div className="tf-dialog" role="dialog" aria-modal="true">
-            <h2 className="tf-dialog-title">Add user</h2>
-            <form className="admin-form" onSubmit={addUser}>
-              <label className="auth-label">
-                Full name
-                <input
-                  className="input"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  required
-                />
-              </label>
-              <label className="auth-label">
-                Email
-                <input
-                  className="input"
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  required
-                />
-              </label>
-              <label className="auth-label">
-                Role
-                <select
-                  className="input"
-                  value={newRole}
-                  onChange={(e) => setNewRole(e.target.value)}
-                >
-                  {ROLE_OPTIONS.map((r) => (
-                    <option key={r.value} value={r.value}>
-                      {r.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="tf-dialog-actions tf-dialog-actions--form">
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={() => setAddOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Save
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ) : null}
 
       <ConfirmDialog
         open={deleteId != null}
