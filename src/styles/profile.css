@@ -286,3 +286,29 @@
   background: #d1fae5;
   color: #065f46;
 }
+
+/* أضف في ملف الـ CSS بتاعك */
+
+.profile-list-item {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.profile-list-item:hover {
+  transform: translateY(-2px);
+  border-color: var(--tf-primary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .profile-list-item {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+  
+  .profile-status-pill {
+    margin-top: 0.5rem;
+  }
+}

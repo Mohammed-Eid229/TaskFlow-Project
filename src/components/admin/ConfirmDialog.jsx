@@ -4,7 +4,8 @@ export default function ConfirmDialog({
   children,
   confirmLabel = "Delete",
   cancelLabel = "Cancel",
-  danger,
+  danger = false,
+  loading = false,
   onConfirm,
   onCancel,
 }) {
@@ -17,6 +18,7 @@ export default function ConfirmDialog({
         className="tf-dialog-backdrop"
         aria-label="Close dialog"
         onClick={onCancel}
+        disabled={loading}
       />
       <div
         className="tf-dialog"
@@ -29,15 +31,21 @@ export default function ConfirmDialog({
         </h2>
         {children ? <div className="tf-dialog-body">{children}</div> : null}
         <div className="tf-dialog-actions">
-          <button type="button" className="btn btn-ghost" onClick={onCancel}>
+          <button 
+            type="button" 
+            className="btn btn-ghost" 
+            onClick={onCancel}
+            disabled={loading}
+          >
             {cancelLabel}
           </button>
           <button
             type="button"
             className={`btn ${danger ? "btn-danger" : "btn-primary"}`}
             onClick={onConfirm}
+            disabled={loading}
           >
-            {confirmLabel}
+            {loading ? "Loading..." : confirmLabel}
           </button>
         </div>
       </div>

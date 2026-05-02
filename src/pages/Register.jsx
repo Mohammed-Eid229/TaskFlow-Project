@@ -5,8 +5,8 @@ import AuthAlert from "../components/AuthAlert"
 
 const ROLE_API = {
   admin: "Admin",
-  manager: "ProjectManager",
-  member: "TeamMember",
+  manager: "Project Manager",
+  member: "Team Member",
 }
 
 export default function Register() {
@@ -41,16 +41,14 @@ export default function Register() {
     })
 
     if (result.ok) {
-      if (result.needsLogin) {
-        setInfo("Account created. You can sign in once the server approves your role (if required).")
+      if (role === "manager") {
+        // لو PM، ينتظر موافقة الـ Admin
+        setInfo("Your request to become a Project Manager has been submitted. You can login now as a Team Member until admin approves your request.")
         setTimeout(() => navigate("/login"), 2000)
       } else {
-        if (result.pendingPmApproval) {
-          setInfo("PM request submitted. You can continue now as User until Admin approves it.")
-          setTimeout(() => navigate("/dashboard", { replace: true }), 1200)
-          return
-        }
-        navigate("/dashboard", { replace: true })
+        // لو Team Member، يدخل علطول
+        setInfo("Account created successfully! Please login.")
+        setTimeout(() => navigate("/login"), 1500)
       }
     } else {
       setError(result.error)
@@ -125,12 +123,13 @@ export default function Register() {
             onChange={(e) => setRole(e.target.value)}
             className="input input-select"
           >
-            <option value="admin">Admin</option>
-            <option value="manager">Project Manager</option>
-            <option value="member">Team Member</option>
+            <option value="manager">Project Manager (requires admin approval)</option>
+            <option value="member">Team Member (immediate access)</option>
           </select>
           <p className="auth-hint">
-            Your backend may restrict which roles can self-register (e.g. PM pending approval).
+            {role === "manager" 
+              ? "You will be able to login as Team Member first. Admin must approve your PM request." 
+              : "You will get immediate access as a Team Member."}
           </p>
 
           <button

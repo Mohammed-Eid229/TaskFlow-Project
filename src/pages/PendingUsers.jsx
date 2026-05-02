@@ -1,44 +1,53 @@
-import { useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import Layout from "../layout/Layout"
 import { useToast } from "../context/ToastContext"
-import {
-  getAdminUsers,
-  getPendingPmRequests,
-  saveAdminUsers,
-  savePendingPmRequests,
-} from "../data/adminStore"
+import { getPendingPMRequests, approvePMRequest, rejectPMRequest } from "../services/userService"
+import { getApiErrorParts } from "../utils/apiError"
 
 export default function PendingUsers() {
   const { showToast } = useToast()
-  const [pendingRequests, setPendingRequests] = useState(getPendingPmRequests)
-  const [users, setUsers] = useState(getAdminUsers)
+  const [pendingRequests, setPendingRequests] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const pendingOnly = useMemo(
-    () => pendingRequests.filter((request) => request.status === "pending"),
-    [pendingRequests]
-  )
+  useEffect(() => {
+    fetchPendingRequests()
+  }, [])
 
-  const updateRequest = (requestId, decision) => {
-    const target = pendingRequests.find((request) => request.id === requestId)
-    if (!target) return
-
-    const nextRequests = pendingRequests.map((request) =>
-      request.id === requestId ? { ...request, status: decision } : request
-    )
-    setPendingRequests(nextRequests)
-    savePendingPmRequests(nextRequests)
-
-    if (decision === "accepted") {
-      const nextUsers = users.map((user) =>
-        user.id === target.userId ? { ...user, role: "pm" } : user
-      )
-      setUsers(nextUsers)
-      saveAdminUsers(nextUsers)
-      showToast(`${target.name} promoted to Project Manager.`, "success")
-      return
+  const fetchPendingRequests = async () => {
+    try {
+      setLoading(true)
+      const res = await getPendingPMRequests()
+      const requests = res?.data?.data ?? res?.data ?? []
+      setPendingRequests(requests)
+    } catch (error) {
+      showToast(getApiErrorParts(error, "Failed to load pending requests").title, "danger")
+    } finally {
+      setLoading(false)
     }
+  }
 
-    showToast(`${target.name} stays as normal user.`, "info")
+  const updateRequest = async (userId, decision) => {
+    try {
+      if (decision === "accepted") {
+        await approvePMRequest(userId)
+        showToast("User promoted to Project Manager", "success")
+      } else {
+        await rejectPMRequest(userId)
+        showToast("Request rejected", "info")
+      }
+      // Refresh list
+      await fetchPendingRequests()
+    } catch (error) {
+      showToast(getApiErrorParts(error, "Failed to process request").title, "danger")
+    }
+  }
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="text-center py-5">Loading pending requests...</div>
+      </Layout>
+    )
   }
 
   return (
@@ -47,14 +56,12 @@ export default function PendingUsers() {
         <div className="admin-page-head">
           <div>
             <h1 className="dashboard-title">Pending Users</h1>
-            <p className="page-lede">
-              PM requests waiting for admin approval.
-            </p>
+            <p className="page-lede">PM requests waiting for admin approval.</p>
           </div>
         </div>
 
         <div className="card admin-table-card">
-          {pendingOnly.length === 0 ? (
+          {pendingRequests.length === 0 ? (
             <p className="admin-empty">No pending PM requests.</p>
           ) : (
             <div className="table-scroll">
@@ -68,23 +75,23 @@ export default function PendingUsers() {
                   </tr>
                 </thead>
                 <tbody>
-                  {pendingOnly.map((request) => (
+                  {pendingRequests.map((request) => (
                     <tr key={request.id}>
-                      <td>{request.name}</td>
+                      <td>{request.name || request.fullName}</td>
                       <td>{request.email}</td>
                       <td>Project Manager</td>
                       <td className="admin-table-actions">
                         <button
                           type="button"
                           className="btn btn-success btn-sm"
-                          onClick={() => updateRequest(request.id, "accepted")}
+                          onClick={() => updateRequest(request.userId || request.id, "accepted")}
                         >
                           Accept
                         </button>
                         <button
                           type="button"
                           className="btn btn-danger btn-sm"
-                          onClick={() => updateRequest(request.id, "rejected")}
+                          onClick={() => updateRequest(request.userId || request.id, "rejected")}
                         >
                           Reject
                         </button>

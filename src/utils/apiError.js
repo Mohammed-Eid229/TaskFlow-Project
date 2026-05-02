@@ -18,6 +18,12 @@ export function getApiErrorParts(err, fallback = "Something went wrong") {
     }
   }
 
+  if (err.response?.status === 401) {
+  return {
+    title: "Invalid email or password.",
+  }
+}
+
   if (err.code === "ECONNABORTED") {
     return {
       title: "Request timed out",

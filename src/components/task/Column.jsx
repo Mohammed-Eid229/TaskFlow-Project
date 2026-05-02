@@ -1,4 +1,3 @@
-import { Droppable } from "react-beautiful-dnd"
 import TaskCard from "./TaskCard"
 
 export default function Column({
@@ -11,30 +10,26 @@ export default function Column({
   canDragTask = true,
 }) {
   return (
-    <Droppable droppableId={id}>
-      {(provided) => (
-        <div
-          ref={provided.innerRef}
-          {...provided.droppableProps}
-          className="column"
-        >
-          <h3>{title}</h3>
+    <div className="column">
+      <h3>{title}</h3>
 
-          {tasks.map((task, index) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              project={project}
-              index={index}
-              onDelete={onDelete}
-              canDelete={canDeleteTask}
-              canDrag={canDragTask}
-            />
-          ))}
-
-          {provided.placeholder}
+      {tasks.length === 0 ? (
+        <div className="column-empty">
+          <p className="text-muted">No tasks</p>
         </div>
+      ) : (
+        tasks.map((task, index) => (
+          <TaskCard
+            key={task.id}
+            task={task}
+            project={project}
+            index={index}
+            onDelete={onDelete}
+            canDelete={canDeleteTask}
+            canDrag={canDragTask}
+          />
+        ))
       )}
-    </Droppable>
+    </div>
   )
 }

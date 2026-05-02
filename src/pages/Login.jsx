@@ -14,20 +14,21 @@ export default function Login() {
 
   const from = location.state?.from?.pathname || "/dashboard"
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError(null)
-    if (!email.trim() || !password) {
-      setError({ title: "Please enter email and password." })
-      return
-    }
-    const result = await login({ email: email.trim(), password })
-    if (result.ok) {
-      navigate(from, { replace: true })
-    } else {
-      setError(result.error)
-    }
+ const handleSubmit = async (e) => {
+  e.preventDefault()
+  setError(null)
+  if (!email.trim() || !password) {
+    setError({ title: "Please enter email and password." })
+    return
   }
+  const result = await login({ email: email.trim(), password })
+  console.log("result:", result)  // ← هنا
+  if (result.ok) {
+    navigate(from, { replace: true })
+  } else {
+    setError(result.error)
+  }
+}
 
   return (
     <div className="auth-page">

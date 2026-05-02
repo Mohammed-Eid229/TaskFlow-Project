@@ -1,13 +1,17 @@
-import api from "./api"
+import { requestWithFallback } from "./requestWithFallback"
 
-export const getComments = (taskId) => {
+export const getComments = (taskId) =>
+  requestWithFallback([
+    { method: "get", url: "/Comments/GetByTaskId", config: { params: { taskId } } },
+    { method: "get", url: `/Comments/GetByTaskId/${taskId}` },
+  ])
 
-  return api.get(`/tasks/${taskId}/comments`)
+export const addComment = (data) =>
+  requestWithFallback([
+    { method: "post", url: "/Comments/Add", data },
+  ])
 
-}
-
-export const addComment = (data) => {
-
-  return api.post("/comments",data)
-
-}
+export const deleteComment = (commentId) =>
+  requestWithFallback([
+    { method: "delete", url: "/Comments/Delete", config: { params: { commentId } } },
+  ])

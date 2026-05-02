@@ -1,131 +1,114 @@
 import Layout from "../layout/Layout"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useAuth } from "../context/AuthContext"
 import { useToast } from "../context/ToastContext"
-import {
-  RiUserLine,
-  RiMailLine,
-  RiShieldUserLine,
-  RiLockLine,
-  RiPencilLine,
-} from "react-icons/ri"
+import { RiUserLine, RiMailLine, RiShieldUserLine, RiLockLine, RiPencilLine } from "react-icons/ri"
 import { HiOutlinePhotograph } from "react-icons/hi"
+import { uploadProfileImage, updateProfile as updateProfileApi, changePassword as changePasswordApi, getMyProfile } from "../services/userService"
+import { getMyProjects } from "../services/projectService"
+import { getMyTasks } from "../services/taskService"
+import { Link } from "react-router-dom"
 
-function ProfileEditForms({ user, updateProfile, showToast, onClose }) {
+const BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/api\/?$/, "") ?? ""
+
+function Avatar({ src, name, size = 112 }) {
+  const initial = (name || "U").trim()[0].toUpperCase()
+  const [imgError, setImgError] = useState(false)
+
+  if (src && !imgError) {
+    const fullSrc = src.startsWith("http") ? src : `${BASE_URL}${src}`
+    return (
+      <img 
+        src={fullSrc} 
+        alt={name} 
+        className="profile-avatar-img"
+        style={{ width: size, height: size }}
+        onError={() => setImgError(true)} 
+      />
+    )
+  }
+
+  return (
+    <div className="profile-avatar-img" style={{
+      width: size, height: size,
+      background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: size * 0.4, fontWeight: 700, color: "#fff"
+    }}>
+      {initial}
+    </div>
+  )
+}
+
+function ProfileEditForms({ user, showToast, onClose, onProfileUpdated }) {
   const [nameEdit, setNameEdit] = useState(user?.fullName ?? "")
   const [emailEdit, setEmailEdit] = useState(user?.email ?? "")
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [saving, setSaving] = useState(false)
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault()
-    if (!nameEdit.trim() || !emailEdit.trim()) {
-      showToast("Name and email are required.", "error")
-      return
-    }
-    updateProfile({ fullName: nameEdit.trim(), email: emailEdit.trim() })
-    showToast("Profile saved. Replace with PATCH /api/users/me when ready.")
-    onClose?.()
+    if (!nameEdit.trim() || !emailEdit.trim()) { showToast("Name and email are required.", "error"); return }
+    try {
+      setSaving(true)
+      await updateProfileApi({ fullName: nameEdit.trim(), email: emailEdit.trim() })
+      showToast("Profile updated successfully.", "success")
+      onProfileUpdated?.(); onClose?.()
+    } catch { showToast("Failed to update profile.", "error") }
+    finally { setSaving(false) }
   }
 
-  const handleChangePassword = (e) => {
+  const handleChangePassword = async (e) => {
     e.preventDefault()
-    if (newPassword.length < 6) {
-      showToast("New password must be at least 6 characters.", "error")
-      return
-    }
-    if (newPassword !== confirmPassword) {
-      showToast("New passwords do not match.", "error")
-      return
-    }
-    setCurrentPassword("")
-    setNewPassword("")
-    setConfirmPassword("")
-    showToast(
-      "Password change recorded (mock — connect your auth API).",
-      "success"
-    )
-    onClose?.()
+    if (newPassword.length < 6) { showToast("New password must be at least 6 characters.", "error"); return }
+    if (newPassword !== confirmPassword) { showToast("New passwords do not match.", "error"); return }
+    try {
+      setSaving(true)
+      await changePasswordApi({ currentPassword, newPassword, confirmPassword })
+      showToast("Password changed successfully.", "success")
+      setCurrentPassword(""); setNewPassword(""); setConfirmPassword("")
+      onClose?.()
+    } catch { showToast("Failed to change password.", "error") }
+    finally { setSaving(false) }
   }
 
   return (
-    <div className="profile-account-grid profile-account-grid--modal">
-      <form className="admin-form" onSubmit={handleSaveProfile}>
-        <h4 className="section-title" style={{ marginTop: 0 }}>
-          Edit profile
-        </h4>
-        <label className="auth-label" htmlFor="profile-name">
-          Name
-        </label>
-        <input
-          id="profile-name"
-          className="input"
-          value={nameEdit}
-          onChange={(e) => setNameEdit(e.target.value)}
-          autoComplete="name"
-        />
-        <label className="auth-label" htmlFor="profile-email">
-          Email
-        </label>
-        <input
-          id="profile-email"
-          type="email"
-          className="input"
-          value={emailEdit}
-          onChange={(e) => setEmailEdit(e.target.value)}
-          autoComplete="email"
-        />
-        <div className="profile-form-actions">
-          <button type="submit" className="btn btn-primary">
-            Save profile
-          </button>
-        </div>
-      </form>
-
-      <form className="admin-form" onSubmit={handleChangePassword}>
-        <h4 className="section-title" style={{ marginTop: 0 }}>
-          <RiLockLine aria-hidden /> Change password
-        </h4>
-        <label className="auth-label" htmlFor="profile-cur-pw">
-          Current password
-        </label>
-        <input
-          id="profile-cur-pw"
-          type="password"
-          className="input"
-          value={currentPassword}
-          onChange={(e) => setCurrentPassword(e.target.value)}
-          autoComplete="current-password"
-        />
-        <label className="auth-label" htmlFor="profile-new-pw">
-          New password
-        </label>
-        <input
-          id="profile-new-pw"
-          type="password"
-          className="input"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          autoComplete="new-password"
-        />
-        <label className="auth-label" htmlFor="profile-confirm-pw">
-          Confirm new password
-        </label>
-        <input
-          id="profile-confirm-pw"
-          type="password"
-          className="input"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          autoComplete="new-password"
-        />
-        <div className="profile-form-actions">
-          <button type="submit" className="btn btn-primary">
-            Update password
-          </button>
-        </div>
-      </form>
+    <div className="row g-4">
+      <div className="col-md-6">
+        <form onSubmit={handleSaveProfile}>
+          <h4 className="mb-3">Edit profile</h4>
+          <div className="mb-3">
+            <label className="form-label">Name</label>
+            <input className="form-control" value={nameEdit} onChange={(e) => setNameEdit(e.target.value)} />
+          </div>
+          <div className="mb-3">
+            <label className="form-label">Email</label>
+            <input type="email" className="form-control" value={emailEdit} onChange={(e) => setEmailEdit(e.target.value)} />
+          </div>
+          <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? "Saving..." : "Save profile"}</button>
+        </form>
+      </div>
+      
+      <div className="col-md-6">
+        <form onSubmit={handleChangePassword}>
+          <h4 className="mb-3"><RiLockLine className="me-2" /> Change password</h4>
+          <div className="mb-3">
+            <label className="form-label">Current password</label>
+            <input type="password" className="form-control" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} />
+          </div>
+          <div className="mb-3">
+            <label className="form-label">New password</label>
+            <input type="password" className="form-control" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+          </div>
+          <div className="mb-3">
+            <label className="form-label">Confirm new password</label>
+            <input type="password" className="form-control" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+          </div>
+          <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? "Saving..." : "Change password"}</button>
+        </form>
+      </div>
     </div>
   )
 }
@@ -133,202 +116,216 @@ function ProfileEditForms({ user, updateProfile, showToast, onClose }) {
 export default function Profile() {
   const { user, updateProfile } = useAuth()
   const { showToast } = useToast()
-  const [image, setImage] = useState("https://i.pravatar.cc/151")
   const [editOpen, setEditOpen] = useState(false)
+  const [profileImageUrl, setProfileImageUrl] = useState(user?.profileImageUrl ?? "")
+  const [uploading, setUploading] = useState(false)
+  const [myProjects, setMyProjects] = useState([])
+  const [myTasks, setMyTasks] = useState([])
+  const [loading, setLoading] = useState(true)
 
-  const displayName = user?.fullName || user?.email || "User"
+  useEffect(() => {
+    const loadProfileData = async () => {
+      try {
+        setLoading(true)
+        const profileRes = await getMyProfile()
+        const profileData = profileRes?.data?.data ?? profileRes?.data ?? {}
+        if (profileData.profileImageUrl) setProfileImageUrl(profileData.profileImageUrl)
+        
+        const projectsRes = await getMyProjects()
+        const projects = Array.isArray(projectsRes?.data) ? projectsRes.data
+          : Array.isArray(projectsRes?.data?.data) ? projectsRes.data.data
+          : []
+        setMyProjects(projects)
+        
+        const tasksRes = await getMyTasks()
+        let tasks = Array.isArray(tasksRes?.data) ? tasksRes.data
+          : Array.isArray(tasksRes?.data?.data) ? tasksRes.data.data
+          : []
+        
+        const myTasksFiltered = tasks.filter(t => 
+          t.assignedTo === user?.id || 
+          t.assignedUserId === user?.id ||
+          t.assignedUserName === user?.email
+        )
+        setMyTasks(myTasksFiltered)
+        
+      } catch (error) {
+        console.error("Failed to load profile data:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadProfileData()
+  }, [user?.id, user?.email])
+
+  const displayName = user?.fullName || user?.name || user?.email || "User"
   const displayEmail = user?.email || "—"
   const displayRole = user?.displayRole || user?.role || "—"
 
-  const accountKey = `${user?.email ?? ""}-${user?.fullName ?? ""}`
-
-  const projects = [
-    { id: 1, title: "TaskFlow App", members: 5 },
-    { id: 2, title: "E-commerce", members: 3 },
-  ]
-
-  const tasks = [
-    { id: 1, title: "Fix Bug", status: "In Progress" },
-    { id: 2, title: "Design UI", status: "Done" },
-  ]
-
-  const handleImageChange = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      const imageUrl = URL.createObjectURL(file)
-      setImage(imageUrl)
-    }
-  }
-
   const roleKey = String(displayRole).toLowerCase().replace(/\s+/g, "")
-  const isPM =
-    displayRole === "Project Manager" || roleKey === "projectmanager"
-  const isMember =
-    displayRole === "Team Member" || roleKey === "teammember"
-  const isAdmin = displayRole === "Admin" || roleKey === "admin"
+  const isPM = displayRole === "Project Manager" || roleKey === "projectmanager"
+  const isMember = displayRole === "Team Member" || roleKey === "teammember"
+  const isAdminUser = displayRole === "Admin" || roleKey === "admin"
 
-  const closeEdit = () => setEditOpen(false)
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    try {
+      setUploading(true)
+      setProfileImageUrl(URL.createObjectURL(file))
+      const res = await uploadProfileImage(file)
+      const url = res?.data?.data ?? res?.data ?? ""
+      if (url) { setProfileImageUrl(url); updateProfile({ profileImageUrl: url }) }
+      showToast("Photo updated successfully.", "success")
+    } catch { showToast("Failed to upload photo.", "error") }
+    finally { setUploading(false) }
+  }
 
   return (
     <Layout>
-      <h1 className="dashboard-title">Profile</h1>
-      <p className="page-lede">Your account and role-specific activity</p>
-
       <div className="profile-page">
-        <div className="profile-hero" aria-hidden>
+        {/* Hero Section */}
+        <div className="profile-hero">
           <div className="profile-hero__pattern" />
         </div>
 
+        {/* Profile Sheet */}
         <div className="profile-sheet">
-          <header className="profile-head">
+          {/* Profile Header */}
+          <div className="profile-head">
             <div className="profile-avatar-block">
               <div className="profile-avatar-ring">
-                <img src={image} alt="" className="profile-avatar-img" />
+                <Avatar src={profileImageUrl} name={displayName} />
               </div>
               <label className="profile-photo-btn">
-                <HiOutlinePhotograph aria-hidden />
-                Change photo
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="visually-hidden"
-                  onChange={handleImageChange}
-                />
+                <HiOutlinePhotograph size={14} />
+                {uploading ? "Uploading..." : "Change photo"}
+                <input type="file" accept="image/*" hidden onChange={handleImageChange} disabled={uploading} />
               </label>
             </div>
-
             <div className="profile-head-meta">
-              <h2 className="profile-display-name">{displayName}</h2>
+              <h1 className="profile-display-name">{displayName}</h1>
               <ul className="profile-facts">
-                <li>
-                  <RiMailLine aria-hidden />
-                  <span>{displayEmail}</span>
-                </li>
-                <li>
-                  <RiShieldUserLine aria-hidden />
-                  <span className="profile-role-badge">{displayRole}</span>
-                </li>
+                <li><RiMailLine /> {displayEmail}</li>
+                <li><RiShieldUserLine /> <span className="profile-role-badge">{displayRole}</span></li>
               </ul>
-              <div className="profile-head-actions">
-                <button
-                  type="button"
-                  className="btn btn-primary profile-edit-trigger"
-                  onClick={() => setEditOpen(true)}
-                >
-                  <RiPencilLine aria-hidden />
-                  Edit profile
-                </button>
-              </div>
             </div>
-          </header>
+            <button className="btn btn-primary" onClick={() => setEditOpen(true)} style={{ alignSelf: "center" }}>
+              <RiPencilLine /> Edit profile
+            </button>
+          </div>
 
           <div className="profile-divider" />
 
+          {/* Profile Sections */}
           <div className="profile-sections">
             {isPM && (
-              <section className="profile-section">
-                <h3 className="profile-section-title">
-                  <RiUserLine aria-hidden />
-                  Your projects
-                </h3>
-                <ul className="profile-list">
-                  {projects.map((p) => (
-                    <li key={p.id} className="profile-list-item">
-                      <div>
-                        <span className="profile-list-title">{p.title}</span>
-                        <span className="profile-list-sub">
-                          {p.members} members
-                        </span>
+              <section>
+                <h2 className="profile-section-title">
+                  <RiUserLine /> Your Projects
+                </h2>
+                {loading ? (
+                  <p className="profile-section-text">Loading...</p>
+                ) : myProjects.length > 0 ? (
+                  <div className="row g-3">
+                    {myProjects.map((project) => (
+                      <div key={project.id} className="col-md-6 col-lg-4">
+                        <Link to={`/projects/${project.id}`} state={{ project }} className="text-decoration-none">
+                          <div className="profile-list-item">
+                            <div>
+                              <div className="profile-list-title">{project.name || project.title}</div>
+                              <div className="profile-list-sub">
+                                {project.description?.slice(0, 60) || "No description"}
+                              </div>
+                            </div>
+                            <span className="profile-status-pill profile-status-pill--progress">
+                              Active
+                            </span>
+                          </div>
+                        </Link>
                       </div>
-                    </li>
-                  ))}
-                </ul>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="profile-section-text">No projects assigned yet.</p>
+                )}
               </section>
             )}
 
             {isMember && (
-              <section className="profile-section">
-                <h3 className="profile-section-title">
-                  <RiUserLine aria-hidden />
-                  Your tasks
-                </h3>
-                <ul className="profile-list">
-                  {tasks.map((t) => (
-                    <li key={t.id} className="profile-list-item">
-                      <span className="profile-list-title">{t.title}</span>
-                      <span
-                        className={`profile-status-pill profile-status-pill--${t.status === "Done" ? "done" : "progress"}`}
-                      >
-                        {t.status}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+              <section>
+                <h2 className="profile-section-title">
+                  <RiUserLine /> Your Tasks ({myTasks.length})
+                </h2>
+                {loading ? (
+                  <p className="profile-section-text">Loading...</p>
+                ) : myTasks.length > 0 ? (
+                  <div className="row g-3">
+                    {myTasks.map((task) => (
+                      <div key={task.id} className="col-md-6 col-lg-4">
+                        <Link to={`/tasks/${task.id}`} state={{ task, projectId: task.projectId }} className="text-decoration-none">
+                          <div className="profile-list-item">
+                            <div>
+                              <div className="profile-list-title">{task.title}</div>
+                              <div className="profile-list-sub">
+                                {task.description?.slice(0, 60) || "No description"}
+                              </div>
+                            </div>
+                           <span className={`profile-status-pill ${
+                            task.status === "done" ? "profile-status-pill--done" : "profile-status-pill--progress"
+                          }`}>
+                            {task.status === "done" ? "Completed" : "In Progress"}
+                          </span>
+                          </div>
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="profile-section-text">No tasks assigned yet.</p>
+                )}
               </section>
             )}
 
-            {isAdmin && (
-              <section className="profile-section">
-                <h3 className="profile-section-title">
-                  <RiShieldUserLine aria-hidden />
-                  Admin
-                </h3>
-                <p className="profile-section-text">
-                  Manage users and PM approvals — connect this section to your API
-                  when ready.
-                </p>
+            {isAdminUser && (
+              <section>
+                <h2 className="profile-section-title">
+                  <RiShieldUserLine /> Admin Dashboard
+                </h2>
+                <p className="profile-section-text">Manage users and PM approvals from the sidebar.</p>
               </section>
             )}
 
-            {!isPM && !isMember && !isAdmin && (
-              <section className="profile-section">
-                <h3 className="profile-section-title">Overview</h3>
-                <p className="profile-section-text">
-                  Project and task summaries will appear here based on your role.
-                </p>
+            {!isPM && !isMember && !isAdminUser && (
+              <section>
+                <h2 className="profile-section-title">Overview</h2>
+                <p className="profile-section-text">Project and task summaries will appear here based on your role.</p>
               </section>
             )}
           </div>
         </div>
       </div>
 
-      {editOpen && user ? (
+      {/* Edit Profile Modal */}
+      {editOpen && user && (
         <div className="tf-dialog-root" role="presentation">
-          <button
-            type="button"
-            className="tf-dialog-backdrop"
-            aria-label="Close dialog"
-            onClick={closeEdit}
-          />
-          <div
-            className="tf-dialog tf-dialog--profile-edit"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="profile-edit-title"
-          >
+          <button type="button" className="tf-dialog-backdrop" onClick={() => setEditOpen(false)} />
+          <div className="tf-dialog tf-dialog--profile-edit" role="dialog" aria-modal="true">
             <div className="profile-edit-modal-head">
-              <h2 id="profile-edit-title" className="profile-edit-modal-title">
-                Edit profile
-              </h2>
-              <button
-                type="button"
-                className="profile-edit-close"
-                onClick={closeEdit}
-                aria-label="Close"
-              >
-                ×
-              </button>
+              <h2 className="profile-edit-modal-title">Edit profile</h2>
+              <button type="button" className="profile-edit-close" onClick={() => setEditOpen(false)}>×</button>
             </div>
             <ProfileEditForms
-              key={accountKey}
-              user={user}
-              updateProfile={updateProfile}
-              showToast={showToast}
-              onClose={closeEdit}
+              user={user} showToast={showToast}
+              onClose={() => setEditOpen(false)}
+              onProfileUpdated={() => getMyProfile().then((res) => {
+                const data = res?.data?.data ?? res?.data ?? {}
+                if (data.profileImageUrl) setProfileImageUrl(data.profileImageUrl)
+              }).catch(() => {})}
             />
           </div>
         </div>
-      ) : null}
+      )}
     </Layout>
   )
 }

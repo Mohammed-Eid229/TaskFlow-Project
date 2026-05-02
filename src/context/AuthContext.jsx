@@ -15,6 +15,7 @@ import {
   isMockAuthEnabled,
 } from "../utils/mockAuth"
 import { createUserWithOptionalPmRequest, getMockRoleByEmail } from "../data/adminStore"
+import { getMyProfile } from "../services/userService"
 
 const AuthContext = createContext(null)
 
@@ -26,6 +27,96 @@ function readStoredUser() {
     return u && typeof u === "object" ? u : null
   } catch {
     return null
+  }
+}
+
+// Decode JWT payload without verifying signature (client-side only).
+function decodeJwt(token) {
+  try {
+    const part = token.split(".")[1]
+    if (!part) return null
+    const padded = part.replace(/-/g, "+").replace(/_/g, "/").padEnd(
+      Math.ceil(part.length / 4) * 4,
+      "="
+    )
+    return JSON.parse(atob(padded))
+  } catch {
+    return null
+  }
+}
+
+// Extract role from JWT claims — .NET Identity uses the long claim URI or "role".
+function getRoleFromToken(token) {
+  const claims = decodeJwt(token)
+  if (!claims) return null
+  return (
+    claims.role ||
+    claims.Role ||
+    claims["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] ||
+    null
+  )
+}
+
+// Extract name from JWT claims.
+function getNameFromToken(token) {
+  const claims = decodeJwt(token)
+  if (!claims) return null
+  return (
+    claims.name ||
+    claims.unique_name ||
+    claims["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"] ||
+    null
+  )
+}
+
+// Try JWT first (fast, no network), then fall back to profile API.
+async function hydrateProfileInto(token, baseUser, persistSession) {
+  // 1. Try reading role from the JWT itself (no network needed).
+  const roleFromToken = getRoleFromToken(token)
+  const nameFromToken = getNameFromToken(token)
+
+  if (roleFromToken) {
+    persistSession(token, {
+      ...baseUser,
+      fullName: nameFromToken || baseUser?.fullName || baseUser?.email || "",
+      role: roleFromToken,
+    })
+    return
+  }
+
+  // 2. JWT had no role — try the profile API.
+  try {
+    const profileRes = await getMyProfile()
+
+    // API shape: { data: { name, role, email, status, id } }
+    const raw =
+      profileRes?.data?.data ??
+      profileRes?.data ??
+      profileRes
+
+    if (!raw || typeof raw !== "object") return
+
+    const profileRole = raw.role || raw.roleName || baseUser?.role || ""
+    const profileName = raw.name || raw.fullName || raw.userName || baseUser?.fullName || ""
+    const profileEmail = raw.email || baseUser?.email || ""
+
+    if (!profileRole) {
+      console.warn("[AuthContext] Profile API returned no role. User will have no role assigned.")
+      return
+    }
+
+    persistSession(token, {
+      ...baseUser,
+      email: profileEmail,
+      fullName: profileName,
+      role: profileRole,
+    })
+  } catch (err) {
+    console.error(
+      "[AuthContext] getMyProfile failed — role will be missing:",
+      err?.response?.status,
+      err?.message
+    )
   }
 }
 
@@ -69,15 +160,18 @@ export function AuthProvider({ children }) {
         }
 
         const res = await loginRequest({ email, password })
-        const { token: t, user: u } = normalizeAuthPayload(res.data, {
-          email,
-        })
+        const { token: t, user: u } = normalizeAuthPayload(res, { email })
+
         if (!t) {
-          throw new Error(
-            "Server did not return a token. Check the login API response shape."
-          )
+          throw new Error("Server did not return a token. Check the login API response shape.")
         }
-        persistSession(t, u)
+
+        // Persist basic session immediately so the user is logged in.
+        persistSession(t, u || { email })
+
+        // Enrich with role from JWT or profile API.
+        await hydrateProfileInto(t, u || { email }, persistSession)
+
         return { ok: true }
       } catch (err) {
         return {
@@ -98,11 +192,7 @@ export function AuthProvider({ children }) {
         if (isMockAuthEnabled()) {
           const wantsPm = role === "ProjectManager"
           const { user: adminStoreUser, pendingCreated } =
-            createUserWithOptionalPmRequest({
-              fullName,
-              email,
-              wantsPm,
-            })
+            createUserWithOptionalPmRequest({ fullName, email, wantsPm })
           const sessionRole = wantsPm ? "TeamMember" : role
           const { token: t, user: u } = buildMockSession({
             email: adminStoreUser.email,
@@ -110,27 +200,17 @@ export function AuthProvider({ children }) {
             role: sessionRole,
           })
           persistSession(t, u)
-          return {
-            ok: true,
-            needsLogin: false,
-            pendingPmApproval: pendingCreated,
-          }
+          return { ok: true, needsLogin: false, pendingPmApproval: pendingCreated }
         }
 
-        const res = await registerRequest({
-          fullName,
-          email,
-          password,
-          role,
-        })
-        const { token: t, user: u } = normalizeAuthPayload(res.data, {
-          email,
-          fullName,
-          role,
-        })
+        const res = await registerRequest({ fullName, email, password, role })
+        const { token: t, user: u } = normalizeAuthPayload(res, { email, fullName, role })
+
         if (t && u) {
           persistSession(t, u)
+          await hydrateProfileInto(t, u, persistSession)
         }
+
         return { ok: true, needsLogin: !t }
       } catch (err) {
         return {
@@ -174,6 +254,7 @@ export function AuthProvider({ children }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const ctx = useContext(AuthContext)
   if (!ctx) {

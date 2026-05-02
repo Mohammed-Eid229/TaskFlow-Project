@@ -51,16 +51,14 @@ export function normalizeTaskDetail(raw, idFromRoute) {
   return {
     id,
     title: raw?.title?.trim() || "Untitled task",
-    description:
-      (raw?.description && String(raw.description).trim()) ||
-      "No description yet. Add details when the API is connected.",
+    description: raw?.description ? String(raw.description).trim() : "",
     status,
     statusLabel: kanbanStatusToLabel(status),
     priority,
     priorityLabel: formatPriorityLabel(priority),
     priorityBadgeClass: priorityToBadgeClass(priority),
     statusBadgeClass: statusToBadgeClass(status),
-    assignedTo: raw?.assignedTo?.trim() || "Unassigned",
+    assignedTo: raw?.assignedUserName?.trim() || raw?.assignedTo?.trim() || "",
     dueDate: raw?.dueDate?.trim() || "—",
     projectId: String(raw?.projectId ?? DEFAULT_PROJECT.projectId),
     projectName: raw?.projectName ?? DEFAULT_PROJECT.projectName,
