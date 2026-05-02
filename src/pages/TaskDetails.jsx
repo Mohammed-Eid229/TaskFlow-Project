@@ -9,7 +9,7 @@ import { FiPaperclip, FiDownload } from "react-icons/fi"
 import { FaFilePdf, FaFileImage, FaFileWord, FaFileExcel, FaFileAlt } from "react-icons/fa"
 import { RiArrowLeftLine, RiUserLine, RiCalendarEventLine, RiFlagLine, RiCheckboxCircleLine } from "react-icons/ri"
 import { requestWithFallback } from "../services/requestWithFallback"
-import { updateTask, assignTask } from "../services/taskService"
+import { updateTask } from "../services/taskService"
 import { getProjectMembers } from "../services/projectService"
 import { useToast } from "../context/ToastContext"
 import { getApiErrorParts } from "../utils/apiError"
@@ -214,9 +214,10 @@ export default function TaskDetails() {
   // تابع تغييرات status من taskData
   useEffect(() => {
     if (taskData.status && taskData.status !== statusVal) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStatusVal(taskData.status)
     }
-  }, [taskData.status])
+  }, [statusVal, taskData.status])
 
   // جلب التعليقات
   useEffect(() => {
@@ -373,7 +374,7 @@ export default function TaskDetails() {
     try {
       await removeComment(commentId)
       setComments((prev) => prev.filter((c) => c.id !== commentId))
-    } catch {}
+    } catch { /* empty */ }
   }
 
   const handleFileUpload = async (e) => {
@@ -393,6 +394,7 @@ export default function TaskDetails() {
         fromApi: true,
       }])
       showToast("File uploaded")
+    // eslint-disable-next-line no-unused-vars
     } catch (_) {
       setFiles((prev) => [...prev, { id: Date.now(), name: file.name, file, fromApi: false }])
     }
@@ -400,7 +402,7 @@ export default function TaskDetails() {
 
   const handleDeleteFile = async (fileId, fromApi) => {
     if (fromApi) {
-      try { await removeAttachment(fileId) } catch {}
+      try { await removeAttachment(fileId) } catch { /* empty */ }
     }
     setFiles((prev) => prev.filter((f) => f.id !== fileId))
   }
