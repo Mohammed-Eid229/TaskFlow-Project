@@ -40,7 +40,7 @@ function Avatar({ src, name, size = 112 }) {
   )
 }
 
-function ProfileEditForms({ user, showToast, onClose, onProfileUpdated }) {
+function ProfileEditForms({ user, showToast, onClose, onProfileUpdated, updateUser }) {
   const [nameEdit, setNameEdit] = useState(user?.fullName ?? "")
   const [emailEdit, setEmailEdit] = useState(user?.email ?? "")
   const [currentPassword, setCurrentPassword] = useState("")
@@ -54,6 +54,10 @@ function ProfileEditForms({ user, showToast, onClose, onProfileUpdated }) {
     try {
       setSaving(true)
       await updateProfileApi({ fullName: nameEdit.trim(), email: emailEdit.trim() })
+      
+      // Update local state immediately
+      updateUser({ fullName: nameEdit.trim(), email: emailEdit.trim() })
+      
       showToast("Profile updated successfully.", "success")
       onProfileUpdated?.(); onClose?.()
     } catch { showToast("Failed to update profile.", "error") }
@@ -70,7 +74,13 @@ function ProfileEditForms({ user, showToast, onClose, onProfileUpdated }) {
       showToast("Password changed successfully.", "success")
       setCurrentPassword(""); setNewPassword(""); setConfirmPassword("")
       onClose?.()
-    } catch { showToast("Failed to change password.", "error") }
+    } catch (err) {
+      if (err.response?.status === 401) {
+        showToast("Current password is incorrect.", "error")
+      } else {
+        showToast("Failed to change password.", "error")
+      }
+    }
     finally { setSaving(false) }
   }
 
@@ -114,7 +124,7 @@ function ProfileEditForms({ user, showToast, onClose, onProfileUpdated }) {
 }
 
 export default function Profile() {
-  const { user, updateProfile } = useAuth()
+  const { user, updateUser, refreshUser } = useAuth()
   const { showToast } = useToast()
   const [editOpen, setEditOpen] = useState(false)
   const [profileImageUrl, setProfileImageUrl] = useState(user?.profileImageUrl ?? "")
@@ -123,13 +133,25 @@ export default function Profile() {
   const [myTasks, setMyTasks] = useState([])
   const [loading, setLoading] = useState(true)
 
+  const handleProfileUpdated = async () => {
+    await refreshUser()
+    try {
+      const res = await getMyProfile()
+      const data = res?.data?.data ?? res?.data ?? {}
+      if (data.profileImageUrl) setProfileImageUrl(data.profileImageUrl)
+    } catch (error) {
+      console.error("Failed to refresh profile image:", error)
+    }
+  }
+
   useEffect(() => {
     const loadProfileData = async () => {
       try {
         setLoading(true)
         const profileRes = await getMyProfile()
         const profileData = profileRes?.data?.data ?? profileRes?.data ?? {}
-        if (profileData.profileImageUrl) setProfileImageUrl(profileData.profileImageUrl)
+        const imgUrl = profileData.profileImageUrl || profileData.image || profileData.photo || ""
+        if (imgUrl) setProfileImageUrl(imgUrl)
         
         const projectsRes = await getMyProjects()
         const projects = Array.isArray(projectsRes?.data) ? projectsRes.data
@@ -175,7 +197,13 @@ export default function Profile() {
       setProfileImageUrl(URL.createObjectURL(file))
       const res = await uploadProfileImage(file)
       const url = res?.data?.data ?? res?.data ?? ""
-      if (url) { setProfileImageUrl(url); updateProfile({ profileImageUrl: url }) }
+      if (url) { 
+        setProfileImageUrl(url)
+        updateUser({ profileImageUrl: url }) 
+        
+        // Ensure local storage is updated correctly via updateUser
+        // and also double check if user data in context is fresh
+      }
       showToast("Photo updated successfully.", "success")
     } catch { showToast("Failed to upload photo.", "error") }
     finally { setUploading(false) }
@@ -316,12 +344,11 @@ export default function Profile() {
               <button type="button" className="profile-edit-close" onClick={() => setEditOpen(false)}>×</button>
             </div>
             <ProfileEditForms
-              user={user} showToast={showToast}
+              user={user} 
+              showToast={showToast}
               onClose={() => setEditOpen(false)}
-              onProfileUpdated={() => getMyProfile().then((res) => {
-                const data = res?.data?.data ?? res?.data ?? {}
-                if (data.profileImageUrl) setProfileImageUrl(data.profileImageUrl)
-              }).catch(() => {})}
+              onProfileUpdated={handleProfileUpdated}
+              updateUser={updateUser}
             />
           </div>
         </div>

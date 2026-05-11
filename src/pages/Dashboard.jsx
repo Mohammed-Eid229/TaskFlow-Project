@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable no-empty */
 import Layout from "../layout/Layout"
 import { useAuth } from "../context/AuthContext"
 import { useEffect, useMemo, useState } from "react"
@@ -8,11 +10,16 @@ import { getMyProfile } from "../services/userService"
 import { getMyTasks } from "../services/taskService"
 import { getProjects, getProjectDashboard } from "../services/projectService"
 import { getApiErrorParts } from "../utils/apiError"
+import { formatRelativeTime } from "../utils/dateUtils"
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from "recharts"
 import { RiUserLine, RiTaskLine, RiCheckboxCircleLine, RiTimerLine, RiTimeLine } from "react-icons/ri"
+
+function formatActivityTime(dateString) {
+  return formatRelativeTime(dateString)
+}
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -159,21 +166,6 @@ export default function Dashboard() {
 
   const COLORS = ["#10b981", "#6366f1", "#f59e0b"]
 
-  const formatTime = (dateString) => {
-    if (!dateString) return ""
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now - date
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
-    
-    if (diffMins < 1) return "Just now"
-    if (diffMins < 60) return `${diffMins} min ago`
-    if (diffHours < 24) return `${diffHours} hours ago`
-    return `${diffDays} days ago`
-  }
-
   if (admin) {
     return <Layout><AdminDashboardView /></Layout>
   }
@@ -295,7 +287,7 @@ export default function Dashboard() {
                         <div className="activity-content">
                           <p className="activity-message">{item.message}</p>
                           {item.time && (
-                            <small className="activity-time">{formatTime(item.time)}</small>
+                            <small className="activity-time">{formatActivityTime(item.time)}</small>
                           )}
                         </div>
                       </div>

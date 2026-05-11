@@ -5,6 +5,7 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, assignees = [] })
   const [description, setDescription] = useState("")
   const [priority, setPriority] = useState("medium")
   const [dueDate, setDueDate] = useState("")
+  const [assignedTo, setAssignedTo] = useState("")
 
   if (!isOpen) return null
 
@@ -14,13 +15,14 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, assignees = [] })
       title: title.trim(),
       description: description.trim(),
       priority,
-      assignedTo: null,  // دايمًا null عشان ميتبقاش assigned
+      assignedTo: assignedTo || null,
       dueDate: dueDate || null,
     })
     setTitle("")
     setDescription("")
     setPriority("medium")
     setDueDate("")
+    setAssignedTo("")
     onClose()
   }
 
@@ -46,8 +48,7 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, assignees = [] })
               <option value="high">High</option>
             </select>
           </label>
-          {/* شيلنا الـ Assign dropdown خالص */}
-          <label className="auth-label">
+                    <label className="auth-label">
             Due date
             <input type="date" className="form-control" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </label>

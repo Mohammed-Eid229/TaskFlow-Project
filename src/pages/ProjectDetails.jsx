@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable no-unused-vars */
 import Layout from "../layout/Layout"
 import Column from "../components/task/Column"
 import { DragDropContext } from "react-beautiful-dnd"
@@ -69,13 +71,12 @@ export default function ProjectDetails() {
   const [myTasksStats, setMyTasksStats] = useState({ total: 0, completed: 0, inProgress: 0, pending: 0 })
   const [projectData, setProjectData] = useState(project)
 
-  // جيب كل بيانات المشروع من dashboard API
+  // Get all project data from dashboard API
   useEffect(() => {
     let mounted = true
     const loadProjectData = async () => {
       try {
         const res = await getProjectDashboard(project.id ?? id)
-        console.log("Project Dashboard:", res)
         
         const data = res?.data?.data ?? res?.data ?? {}
         const tasksList = data.tasks ?? []
@@ -95,13 +96,17 @@ export default function ProjectDetails() {
             todoTasks: stats.todoTasks ?? 0,
           })
           
-          const progressRes = await getProjectProgress(project.id ?? id)
-          const progressData = progressRes?.data?.data ?? progressRes?.data ?? {}
-          console.log("Progress data from API:", progressData)
-          setProgress({
-            planned: Math.max(0, Math.min(100, Number(progressData.planned ?? 0))),
-            actual: Math.max(0, Math.min(100, Number(progressData.actual ?? 0))),
-          })
+          try {
+            const progressRes = await getProjectProgress(project.id ?? id)
+            const progressData = progressRes?.data?.data ?? progressRes?.data ?? {}
+            setProgress({
+              planned: Math.max(0, Math.min(100, Number(progressData.planned ?? 0))),
+              actual: Math.max(0, Math.min(100, Number(progressData.actual ?? 0))),
+            })
+          } catch (err) {
+            console.error("Failed to load project progress:", err)
+            // No toast here to avoid annoying the user if progress fails but main data is ok
+          }
           
           if (isPM) {
             setAssignableUsers(
@@ -124,7 +129,7 @@ export default function ProjectDetails() {
     return () => { mounted = false }
   }, [id, project.id, isPM, showToast])
 
-  // جيب الـ workload
+  // Get workload
   useEffect(() => {
     if (!isPM) return
     let mounted = true
@@ -144,7 +149,7 @@ export default function ProjectDetails() {
     return () => { mounted = false }
   }, [id, isPM, project.id])
 
-  // فلتر التاسكات للـ Team Member
+  // Filter tasks for Team Member
   useEffect(() => {
     if (isTeamMember) {
       const filtered = allTasks.filter(t => 
@@ -166,7 +171,7 @@ export default function ProjectDetails() {
     }
   }, [allTasks, user?.id, isTeamMember])
 
-  // جيب بيانات المشروع لو مجتش من الـ state
+  // Get project data if not in state
 useEffect(() => {
   const fetchProject = async () => {
     if (!project.id || project.title === "Project" || project.description === "No description") {
@@ -179,7 +184,7 @@ useEffect(() => {
           title: projectInfo.name || projectInfo.title || "Project",
           description: projectInfo.description || ""
         })
-        // خزن في sessionStorage
+        // store in sessionStorage
         sessionStorage.setItem(`project_${id}`, JSON.stringify({
           id: projectInfo.id || id,
           title: projectInfo.name || projectInfo.title || "Project",
@@ -187,7 +192,7 @@ useEffect(() => {
         }))
       } catch (error) {
         console.error("Failed to fetch project:", error)
-        // حاول تجيب من sessionStorage
+        // try from sessionStorage
         const cached = sessionStorage.getItem(`project_${id}`)
         if (cached) {
           setProjectData(JSON.parse(cached))
@@ -255,7 +260,15 @@ useEffect(() => {
       
       console.log("Add member response:", res)
       
-      if (res?.data?.statusCode === 201 || res?.statusCode === 201 || res?.data?.userId) {
+      const isSuccess = 
+        res?.status === 201 || 
+        res?.status === 200 ||
+        res?.data?.statusCode === 201 || 
+        res?.statusCode === 201 || 
+        res?.data?.userId ||
+        res?.data?.success === true
+
+      if (isSuccess) {
         showToast(`Member added successfully`, "success")
         setShowAddMemberModal(false)
         setMemberEmail("")
@@ -532,16 +545,28 @@ useEffect(() => {
             {isPM && workload.length > 0 ? (
               <div className="card">
                 <h3>Team Workload</h3>
-                {workload.map((w, i) => (
-                  <div key={i} className="progress-line">
-                    <span>{w.name}</span>
-                    <div className="stack-bar">
-                      <div className="blue" style={{ width: w.completed + "%" }} />
-                      <div className="green" style={{ width: w.remaining + "%" }} />
-                      <div className="gray" style={{ width: w.overdue + "%" }} />
+                {workload.map((w, i) => {
+                  const total = (w.completed || 0) + (w.remaining || 0) + (w.overdue || 0)
+                  const compPct = total > 0 ? (w.completed / total) * 100 : 0
+                  const remPct = total > 0 ? (w.remaining / total) * 100 : 0
+                  const overPct = total > 0 ? (w.overdue / total) * 100 : 0
+                  
+                  return (
+                    <div key={i} className="progress-line">
+                      <div className="d-flex justify-content-between mb-1">
+                        <span style={{ fontSize: "0.85rem", fontWeight: 500 }}>{w.name}</span>
+                        <span style={{ fontSize: "0.75rem", color: "var(--tf-text-secondary)" }}>
+                          {w.completed} Done / {total} Total
+                        </span>
+                      </div>
+                      <div className="stack-bar" style={{ height: "12px" }}>
+                        <div className="blue" style={{ width: compPct + "%" }} title={`Completed: ${w.completed}`} />
+                        <div className="green" style={{ width: remPct + "%" }} title={`In Progress: ${w.remaining}`} />
+                        <div className="gray" style={{ width: overPct + "%" }} title={`Overdue: ${w.overdue}`} />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
                 <div className="legend">
                   <div><span className="blue"></span> Completed</div>
                   <div><span className="green"></span> Remaining</div>

@@ -28,7 +28,11 @@ export const updateTask = (data) =>
       url: "/task/update",
       data: {
         id: data.id ?? data.taskId,
-        status: data.status
+        status: data.status,
+        dueDate: data.dueDate,
+        priority: data.priority,
+        title: data.title,
+        description: data.description
       },
     },
   ])
@@ -36,7 +40,7 @@ export const updateTask = (data) =>
   
 export const assignTask = (data) =>
   requestWithFallback([
-    { method: "post", url: "/task/assign", data: { taskId: data.taskId, assignedTo: data.assignedTo } },
+    { method: "post", url: "/task/assign", data },
   ])
 
 export const deleteTask = (taskId) =>

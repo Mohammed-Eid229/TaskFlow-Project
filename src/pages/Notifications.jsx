@@ -1,7 +1,9 @@
+/* eslint-disable no-unused-vars */
 import Layout from "../layout/Layout"
 import { useNotifications } from "../context/NotificationContext"
 import { useAuth } from "../context/AuthContext"
 import { Link } from "react-router-dom"
+import { formatRelativeTime } from "../utils/dateUtils"
 import { 
   RiCheckDoubleLine, 
   RiNotificationLine, 
@@ -13,23 +15,7 @@ import {
 } from "react-icons/ri"
 
 function formatTime(dateString) {
-  if (!dateString) return ""
-  try {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now - date
-    const diffMins = Math.floor(diffMs / 60000)
-    const diffHours = Math.floor(diffMs / 3600000)
-    const diffDays = Math.floor(diffMs / 86400000)
-    
-    if (diffMins < 1) return "Just now"
-    if (diffMins < 60) return `${diffMins} min ago`
-    if (diffHours < 24) return `${diffHours} hours ago`
-    if (diffDays < 7) return `${diffDays} days ago`
-    return date.toLocaleDateString()
-  } catch {
-    return ""
-  }
+  return formatRelativeTime(dateString)
 }
 
 function getNotificationIcon(type, message) {
@@ -39,6 +25,9 @@ function getNotificationIcon(type, message) {
   }
   if (type === "comment" || msg.includes("comment")) {
     return <RiChat1Line className="text-success" />
+  }
+  if (type === "attachment" || msg.includes("attachment")) {
+    return <RiUserAddLine className="text-info" />
   }
   if (msg.includes("assign") || msg.includes("assigned")) {
     return <RiUserAddLine className="text-warning" />

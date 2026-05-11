@@ -105,7 +105,8 @@ function decodeJwtPayload(token) {
   }
 }
 
-export function normalizeAuthPayload(responseOrData, fallback = {}) {
+// Main function to normalize various auth response shapes into { token, user }.
+export function normalizeAuthPayload(responseOrData, fallback = {}) { 
   const data =
     responseOrData && typeof responseOrData === "object" && "data" in responseOrData
       ? responseOrData.data
@@ -198,7 +199,13 @@ export function normalizeAuthPayload(responseOrData, fallback = {}) {
       fullName: user.fullName || user.name || user.userName || fullNameFromClaims || "",
       email: user.email || user.userName || fallback.email || "",
       role: user.role || user.roleName || user.userRole || roleFromClaims || fallback.role || "",
+      profileImageUrl: user.profileImageUrl || user.ProfileImageUrl || user.image || user.photo || user.imagePath || "",
     }
+  }
+
+  if (user && !user.profileImageUrl) {
+    const imgFromData = findByKeyCandidates(data, ["profileImageUrl", "image", "photo", "ProfileImageUrl"])
+    if (imgFromData) user.profileImageUrl = imgFromData
   }
 
   return { token, user }

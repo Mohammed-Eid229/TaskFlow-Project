@@ -32,6 +32,13 @@ export function getApiErrorParts(err, fallback = "Something went wrong") {
   }
 
   const data = err.response?.data
+  if (err.response?.status === 403) {
+    return {
+      title: "Access Forbidden.",
+      detail: data?.message || data?.title || "Your account might be deleted or you don't have permission.",
+    }
+  }
+
   if (typeof data === "string" && data.trim()) {
     return { title: data.trim() }
   }

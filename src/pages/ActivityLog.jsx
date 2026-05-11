@@ -1,8 +1,10 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useEffect, useState } from "react"
 import Layout from "../layout/Layout"
 import { getActivityLog } from "../services/userService"
 import { useToast } from "../context/ToastContext"
 import { getApiErrorParts } from "../utils/apiError"
+import { formatRelativeTime } from "../utils/dateUtils"
 import {
   RiAddCircleLine,
   RiDeleteBinLine,
@@ -20,18 +22,7 @@ const iconByType = {
 }
 
 function formatActivityTime(dateString) {
-  if (!dateString) return ""
-  const date = new Date(dateString)
-  const now = new Date()
-  const diffMs = now - date
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-  
-  if (diffMins < 1) return "Just now"
-  if (diffMins < 60) return `${diffMins} min ago`
-  if (diffHours < 24) return `${diffHours} hours ago`
-  return `${diffDays} days ago`
+  return formatRelativeTime(dateString)
 }
 
 export default function ActivityLog() {

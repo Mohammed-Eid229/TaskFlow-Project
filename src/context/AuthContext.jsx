@@ -1,3 +1,4 @@
+/* eslint-disable no-undef */
 import {
   createContext,
   useCallback,
@@ -71,56 +72,65 @@ function getNameFromToken(token) {
 
 // Try JWT first (fast, no network), then fall back to profile API.
 async function hydrateProfileInto(token, baseUser, persistSession) {
-  // 1. Try reading role from the JWT itself (no network needed).
+  // 1. Try reading role and other info from the JWT first.
+   console.log("[hydrate] baseUser coming in:", baseUser)
+  
+
   const roleFromToken = getRoleFromToken(token)
   const nameFromToken = getNameFromToken(token)
 
-  if (roleFromToken) {
-    persistSession(token, {
-      ...baseUser,
-      fullName: nameFromToken || baseUser?.fullName || baseUser?.email || "",
-      role: roleFromToken,
-    })
-    return
-  }
-
-  // 2. JWT had no role — try the profile API.
+  // 2. We MUST try the profile API regardless to get the latest info like profileImageUrl
   try {
     const profileRes = await getMyProfile()
 
-    // API shape: { data: { name, role, email, status, id } }
     const raw =
       profileRes?.data?.data ??
       profileRes?.data ??
       profileRes
 
-    if (!raw || typeof raw !== "object") return
+    if (raw && typeof raw === "object") {
+      const profileRole = raw.role || raw.roleName || raw.Role || roleFromToken || baseUser?.role || ""
+      const profileName = raw.name || raw.fullName || raw.userName || raw.Name || raw.FullName || nameFromToken || baseUser?.fullName || ""
+      const profileEmail = raw.email || raw.Email || baseUser?.email || ""
+      const profileImage = raw.profileImageUrl || raw.ProfileImageUrl || raw.image || raw.photo || raw.imagePath || ""
 
-    const profileRole = raw.role || raw.roleName || baseUser?.role || ""
-    const profileName = raw.name || raw.fullName || raw.userName || baseUser?.fullName || ""
-    const profileEmail = raw.email || baseUser?.email || ""
-
-    if (!profileRole) {
-      console.warn("[AuthContext] Profile API returned no role. User will have no role assigned.")
-      return
+      if (profileRole) {
+        persistSession(token, {
+          ...baseUser,
+          email: profileEmail,
+          fullName: profileName,
+          role: profileRole,
+          profileImageUrl: profileImage,
+        })
+        return
+      }
     }
-
-    persistSession(token, {
-      ...baseUser,
-      email: profileEmail,
-      fullName: profileName,
-      role: profileRole,
-    })
   } catch (err) {
     console.error(
-      "[AuthContext] getMyProfile failed — role will be missing:",
+      "[AuthContext] getMyProfile failed during hydration:",
       err?.response?.status,
       err?.message
     )
   }
+
+  // Fallback to token info if API fails
+  if (roleFromToken) {
+  persistSession(token, {
+    ...baseUser,
+    fullName: nameFromToken || baseUser?.fullName || baseUser?.email || "",
+    role: roleFromToken,
+    profileImageUrl: "", // never bleed old image through here
+  })
 }
 
-export function AuthProvider({ children }) {
+  // ... after API call ...
+  console.log("[hydrate] raw from API:", raw)
+  console.log("[hydrate] profileImage resolved to:", profileImage)
+}
+
+
+//to handle authentication state and provide login, registration, logout, and profile update functions to the app.
+export function AuthProvider({ children }) { 
   const [user, setUser] = useState(readStoredUser)
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY))
   const [loading, setLoading] = useState(false)
@@ -159,18 +169,18 @@ export function AuthProvider({ children }) {
           return { ok: true }
         }
 
-        const res = await loginRequest({ email, password })
+       const res = await loginRequest({ email, password })
         const { token: t, user: u } = normalizeAuthPayload(res, { email })
 
-        if (!t) {
-          throw new Error("Server did not return a token. Check the login API response shape.")
-        }
+        if (!t) throw new Error("Server did not return a token.")
 
-        // Persist basic session immediately so the user is logged in.
+        localStorage.removeItem(USER_KEY) // wipe previous user before writing new session
+
         persistSession(t, u || { email })
+        await hydrateProfileInto(t, u || { email }, persistSession)
 
         // Enrich with role from JWT or profile API.
-        await hydrateProfileInto(t, u || { email }, persistSession)
+        // await hydrateProfileInto(t, u || { email }, persistSession)
 
         return { ok: true }
       } catch (err) {
@@ -224,17 +234,17 @@ export function AuthProvider({ children }) {
     [persistSession]
   )
 
-  const logout = useCallback(() => {
-    persistSession(null, null)
-  }, [persistSession])
+ const logout = useCallback(() => {
+  localStorage.removeItem(TOKEN_KEY)  // explicit clear
+  localStorage.removeItem(USER_KEY)   // explicit clear
+  persistSession(null, null)
+}, [persistSession])
 
-  const updateProfile = useCallback(
-    (patch) => {
-      if (!user || !token) return
-      persistSession(token, { ...user, ...patch })
-    },
-    [user, token, persistSession]
-  )
+  const updateUser = useCallback((newData) => {
+    if (!user) return
+    const nextUser = { ...user, ...newData }
+    persistSession(token, nextUser)
+  }, [user, token, persistSession])
 
   const value = useMemo(
     () => ({
@@ -246,9 +256,14 @@ export function AuthProvider({ children }) {
       login,
       register,
       logout,
-      updateProfile,
+      updateUser,
+      refreshUser: async () => {
+        if (token && user) {
+          await hydrateProfileInto(token, user, persistSession)
+        }
+      }
     }),
-    [user, token, loading, login, register, logout, updateProfile]
+    [user, token, loading, login, register, logout, updateUser, persistSession]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

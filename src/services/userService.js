@@ -148,12 +148,14 @@ export const getActivityLog = () =>
 export const markNotificationAsRead = (notificationId) =>
   requestWithFallback([
     { method: "post", url: `/notifications/${notificationId}/read` },
-    { method: "post", url: `/Notification/MarkAsRead/${notificationId}` },
+    { method: "post", url: `/notifications/read/${notificationId}` },
+    { method: "post", url: `/notifications/${notificationId}/read` },
   ])
 
 export const markAllNotificationsAsRead = () =>
   requestWithFallback([
     { method: "post", url: "/notifications/read-all" },
     { method: "post", url: "/Notification/MarkAllAsRead" },
+    { method: "post", url: "/notifications/mark-all-read" },
   ])
 

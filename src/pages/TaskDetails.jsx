@@ -1,3 +1,7 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+//* eslint-disable react-hooks/set-state-in-effect */
+/* eslint-disable no-empty */
+/* eslint-disable no-unused-vars */
 import Layout from "../layout/Layout"
 import { Navigate, useParams, useLocation, useNavigate } from "react-router-dom"
 import { useState, useEffect, useMemo } from "react"
@@ -8,8 +12,9 @@ import { FaRegCommentDots } from "react-icons/fa"
 import { FiPaperclip, FiDownload } from "react-icons/fi"
 import { FaFilePdf, FaFileImage, FaFileWord, FaFileExcel, FaFileAlt } from "react-icons/fa"
 import { RiArrowLeftLine, RiUserLine, RiCalendarEventLine, RiFlagLine, RiCheckboxCircleLine } from "react-icons/ri"
+import { getUserDisplayName, timeAgo, createCommentNotification, createAttachmentNotification, formatCommentData } from "../utils/commentUtils"
 import { requestWithFallback } from "../services/requestWithFallback"
-import { updateTask } from "../services/taskService"
+import { updateTask, assignTask } from "../services/taskService"
 import { getProjectMembers } from "../services/projectService"
 import { useToast } from "../context/ToastContext"
 import { getApiErrorParts } from "../utils/apiError"
@@ -214,10 +219,9 @@ export default function TaskDetails() {
   // تابع تغييرات status من taskData
   useEffect(() => {
     if (taskData.status && taskData.status !== statusVal) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStatusVal(taskData.status)
     }
-  }, [statusVal, taskData.status])
+  }, [taskData.status])
 
   // جلب التعليقات
   useEffect(() => {
@@ -225,12 +229,7 @@ export default function TaskDetails() {
       .then((res) => {
         const list = Array.isArray(res?.data?.data) ? res.data.data
           : Array.isArray(res?.data) ? res.data : []
-        setComments(list.map((c) => ({
-          id: c.id ?? c.commentId,
-          user: c.userName ?? c.user ?? "User",
-          text: c.content ?? c.text ?? "",
-          time: c.createdAt ? new Date(c.createdAt) : new Date(),
-        })))
+        setComments(list.map((c) => formatCommentData(c, user)))
       })
       .catch(() => {})
   }, [id])
@@ -304,7 +303,12 @@ export default function TaskDetails() {
     const taskIdNum = Number(task.id)
     const requestData = {
       taskId: taskIdNum,
-      assignedTo: val
+      assignedTo: val,
+      priority: priorityVal,
+      status: statusVal,
+      title: task.title,
+      description: task.description,
+      dueDate: taskData.dueDate
     }
     
     try {
@@ -312,24 +316,99 @@ export default function TaskDetails() {
         headers: { "Content-Type": "application/json" }
       })
       
-      if (assignRes?.data?.statusCode === 200) {
+      console.log("Assignment API response:", assignRes?.data)
+      console.log("Request data:", requestData)
+      console.log("Response status:", assignRes?.data?.statusCode)
+      
+      const statusCode = String(assignRes?.data?.statusCode || "")
+      if (statusCode === "200") {
+        console.log("Assignment successful - updating task data")
+        
         if (taskData.status === "todo" && val) {
+          console.log("Updating task status to 'progress'")
           await updateTask({ id: task.id, status: "progress" })
           setStatusVal("progress")
           setTaskData(prev => ({ ...prev, status: "progress" }))
         }
         
-        showToast(`Task assigned to ${assigneeName}`, "success")
+        console.log("Updating local task data with assignee:", assigneeName)
         setTaskData(prev => ({ 
           ...prev, 
           assignedTo: assigneeName,
           assignedUserName: assigneeName,
           assignedUserId: val 
         }))
+        
+        showToast(`Task assigned to ${assigneeName}`, "success")
+        
+        // Create assignment notification
+        try {
+          const assignerName = user?.fullName || user?.email?.split('@')[0] || "Someone"
+          const notificationMessage = val 
+            ? `${assignerName} assigned ${assigneeName} to task "${task.title}"`
+            : `${assignerName} unassigned ${assigneeName} from task "${task.title}"`
+          
+          console.log("Creating assignment notification:", {
+            taskId: id,
+            message: notificationMessage,
+            type: "assignment",
+            targetUserId: val,
+            assigneeName,
+            assignerName,
+            currentUserId: user?.id
+          })
+          
+          const notificationData = {
+            taskId: id,
+            message: notificationMessage,
+            type: "assignment",
+            targetUserId: val,
+            projectId: task.projectId
+          }
+          
+          const notifRes = await api.post("/notifications/create", notificationData)
+          console.log("Assignment notification response:", notifRes?.data)
+          
+          // Also show success message to PM
+          showToast(`Task assigned to ${assigneeName}`, "success")
+        } catch (notifErr) {
+          console.warn("Failed to create assignment notification:", notifErr)
+          console.warn("Error details:", notifErr.response?.data)
+        }
+      } else {
+        console.warn("Assignment failed with status:", statusCode)
+        console.warn("Response data:", assignRes?.data)
+        
+        // Check if this is actually a success case with different status code
+        const isSuccess = assignRes?.data?.statusCode === "200" || 
+                         assignRes?.data?.statusCode === 200 ||
+                         (assignRes?.data?.message && assignRes?.data?.message.toLowerCase().includes("success"))
+        
+        if (isSuccess) {
+          console.log("Assignment actually succeeded, treating as success")
+          // Don't show error message for successful assignments
+        } else {
+          showToast(`Assignment failed: ${assignRes?.data?.message || "Unknown error"}`, "danger")
+        }
       }
     } catch (err) {
       console.error("Error response:", err.response?.data)
-      showToast(err.response?.data?.message || "Failed to assign task", "danger")
+      console.error("Full error object:", err)
+      
+      // Only show error if it's a real error, not if assignment succeeded
+      if (!err.response?.data?.statusCode || err.response?.data?.statusCode !== "200") {
+        console.log("This is a real error, showing error message")
+        showToast(err.response?.data?.message || "Failed to assign task", "danger")
+      } else {
+        console.log("Assignment succeeded but got unexpected status:", statusCode)
+        console.log("This might be a success case, checking for task data update...")
+        
+        // Check if task data was actually updated
+        setTimeout(() => {
+          const currentTaskData = taskData
+          console.log("Current task data after assignment:", currentTaskData)
+        }, 1000)
+      }
     }
   }
 
@@ -358,13 +437,19 @@ export default function TaskDetails() {
     try {
       const res = await postComment(id, newComment.trim())
       const c = res?.data?.data ?? res?.data ?? {}
-      setComments((prev) => [...prev, {
-        id: c.id ?? Date.now(),
-        user: c.userName ?? user?.fullName ?? "You",
-        text: newComment.trim(),
-        time: new Date(),
-      }])
+      setComments((prev) => [...prev, formatCommentData({
+        ...c,
+        content: newComment.trim(),
+        createdAt: new Date().toISOString()
+      }, user)])
       setNewComment("")
+      
+      // Trigger notification for comment
+      try {
+        await api.post("/notifications/create", createCommentNotification(id, task.title, newComment, task.assignedUserId || task.assignedTo))
+      } catch (notifErr) {
+        console.warn("Failed to create comment notification:", notifErr)
+      }
     } catch (err) {
       showToast(getApiErrorParts(err, "Failed to post comment").title, "danger")
     }
@@ -374,7 +459,7 @@ export default function TaskDetails() {
     try {
       await removeComment(commentId)
       setComments((prev) => prev.filter((c) => c.id !== commentId))
-    } catch { /* empty */ }
+    } catch {}
   }
 
   const handleFileUpload = async (e) => {
@@ -393,16 +478,23 @@ export default function TaskDetails() {
         url: f.fileUrl ?? f.url ?? "",
         fromApi: true,
       }])
-      showToast("File uploaded")
-    // eslint-disable-next-line no-unused-vars
+      showToast(`File "${file.name}" uploaded successfully`, "success")
+      
+      // Trigger notification for attachment
+      try {
+        await api.post("/notifications/create", createAttachmentNotification(id, task.title, file.name, task.assignedUserId || task.assignedTo))
+      } catch (notifErr) {
+        console.warn("Failed to create attachment notification:", notifErr)
+      }
     } catch (_) {
       setFiles((prev) => [...prev, { id: Date.now(), name: file.name, file, fromApi: false }])
+      showToast(`File "${file.name}" uploaded locally`, "success")
     }
   }
 
   const handleDeleteFile = async (fileId, fromApi) => {
     if (fromApi) {
-      try { await removeAttachment(fileId) } catch { /* empty */ }
+      try { await removeAttachment(fileId) } catch {}
     }
     setFiles((prev) => prev.filter((f) => f.id !== fileId))
   }
@@ -427,13 +519,17 @@ export default function TaskDetails() {
     return <FaFileAlt className="file-type default" />
   }
 
-  const timeAgo = (date) => {
-    const m = Math.floor((new Date() - date) / 60000)
-    if (m < 1) return "Just now"
-    if (m < 60) return `${m} min ago`
-    const h = Math.floor(m / 60)
-    if (h < 24) return `${h} hours ago`
-    return `${Math.floor(h / 24)} days ago`
+
+  const handleDueDateChange = async (val) => {
+    if (!isPM) return
+    
+    try {
+      await updateTask({ id: task.id, dueDate: val })
+      setTaskData(prev => ({ ...prev, dueDate: val }))
+      showToast("Due date updated", "success")
+    } catch (err) {
+      showToast(getApiErrorParts(err, "Failed to update due date").title, "danger")
+    }
   }
 
   const priorityBadgeClass = priorityToBadgeClass(priorityVal)
@@ -576,12 +672,21 @@ export default function TaskDetails() {
             <RiCalendarEventLine aria-hidden />
             <div>
               <span className="task-meta-label">Due</span>
-              <span className={`task-meta-value ${isTaskOverdue && taskData.status !== "done" ? "text-danger" : ""}`}>
-                {formatDueDate(taskData.dueDate)}
-                {isTaskOverdue && taskData.status !== "done" && (
-                  <span style={{ marginLeft: "8px", fontSize: "12px", color: "#dc2626" }}>(Overdue)</span>
-                )}
-              </span>
+              {isPM && (isTaskOverdue || taskData.status === "todo") ? (
+                <input 
+                  type="date" 
+                  className="input task-priority-select" 
+                  value={taskData.dueDate ? new Date(taskData.dueDate).toISOString().split('T')[0] : ""} 
+                  onChange={(e) => handleDueDateChange(e.target.value)}
+                />
+              ) : (
+                <span className={`task-meta-value ${isTaskOverdue && taskData.status !== "done" ? "text-danger" : ""}`}>
+                  {formatDueDate(taskData.dueDate)}
+                  {isTaskOverdue && taskData.status !== "done" && (
+                    <span style={{ marginLeft: "8px", fontSize: "12px", color: "#dc2626" }}>(Overdue)</span>
+                  )}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -646,6 +751,18 @@ export default function TaskDetails() {
                         <span className="comment-time">{timeAgo(c.time)}</span>
                       </div>
                       <p className="comment-text">{c.text}</p>
+                      {c.text.length > 100 && (
+                        <button 
+                          type="button" 
+                          className="comment-expand-btn"
+                          onClick={(e) => {
+                            e.target.previousSibling.classList.toggle('expanded')
+                            e.target.textContent = e.target.previousSibling.classList.contains('expanded') ? 'Show less' : 'Show more'
+                          }}
+                        >
+                          Show more
+                        </button>
+                      )}
                       {(user?.fullName === c.user || user?.email === c.user) ? (
                         <button type="button" className="file-delete" style={{ marginTop: "0.25rem" }} onClick={() => handleDeleteComment(c.id)}>Delete</button>
                       ) : null}

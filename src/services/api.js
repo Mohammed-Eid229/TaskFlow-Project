@@ -4,7 +4,7 @@ import { TOKEN_KEY, USER_KEY } from "../constants/storage"
 
 const baseURL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ||
-  "http://localhost:5000/api"
+  "http://localhost:5183/api"
 
 const realApi = axios.create({
   baseURL,
@@ -13,7 +13,7 @@ const realApi = axios.create({
   },
 })
 
-// 🔐 Request interceptor
+// Request interceptor
 realApi.interceptors.request.use((config) => {
   const token = localStorage.getItem(TOKEN_KEY)
   if (token) {
@@ -23,11 +23,17 @@ realApi.interceptors.request.use((config) => {
   return config
 })
 
-// ⚠️ Response interceptor
+// Response interceptor
 realApi.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const status = error.response?.status
+    const url = error.config?.url || ""
+    
+    // Don't auto-logout for 401 on login or change-password
+    const isAuthPath = url.includes("/login") || url.includes("/change-password")
+
+    if (status === 401 && !isAuthPath) {
       localStorage.removeItem(TOKEN_KEY)
       localStorage.removeItem(USER_KEY)
       const path = window.location.pathname
